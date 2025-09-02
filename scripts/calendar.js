@@ -134,24 +134,24 @@ export class CalendarManager {
     }
     
     renderTimeSlots(containerId, isDropZone = false) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        container.innerHTML = '';
-        
-        this.timeSlots.forEach(timeSlot => {
-            const slotElement = document.createElement('div');
-            slotElement.className = 'time-slot';
-            if (isDropZone) {
-                slotElement.classList.add('drop-zone');
-                slotElement.dataset.date = this.currentDate.toISOString().split('T')[0];
-                slotElement.dataset.time = timeSlot.time;
-            } else {
-                slotElement.textContent = timeSlot.display;
-            }
-            container.appendChild(slotElement);
-        });
-    }
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    this.timeSlots.forEach(timeSlot => {
+        const slotElement = document.createElement('div');
+        slotElement.className = 'time-slot';
+        if (isDropZone) {
+            slotElement.classList.add('drop-zone');
+            slotElement.dataset.date = this.formatDateForStorage(this.currentDate);
+            slotElement.dataset.time = timeSlot.time;
+        } else {
+            slotElement.textContent = timeSlot.display;
+        }
+        container.appendChild(slotElement);
+    });
+}
     
     renderDayActivities(activities) {
         const container = document.getElementById('day-activities');
