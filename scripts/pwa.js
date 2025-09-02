@@ -243,18 +243,38 @@ export class PWAManager {
     
     async pingServer() {
         try {
-            // Try to fetch a small resource
+            // Try to fetch a small resource - use a more reliable endpoint
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
             
-            const response = await fetch('/manifest.webmanifest', {
-                method: 'HEAD',
-                cache: 'no-cache',
-                signal: controller.signal
-            });
+            // Try multiple endpoints to check connectivity
+            const endpoints = [
+                './manifest.webmanifest',  // Relative path
+                './index.html',            // Fallback to main page
+                './',                      // Root directory
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'HEAD',
+                        cache: 'no-cache',
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    if (response.ok) {
+                        return true;
+                    }
+                } catch (endpointError) {
+                    // Continue to next endpoint
+                    continue;
+                }
+            }
             
             clearTimeout(timeoutId);
-            return response.ok;
+            return false;
+            
         } catch (error) {
             console.log('Ping failed:', error.message);
             return false;
