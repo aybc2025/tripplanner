@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1976d2">
+    <meta name="description" content="Plan multi-day trips with calendar views and activity management">
+    
+    <title>Trip Planner</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.webmanifest">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/base.css">
+    
+    <!-- PWA iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Trip Planner">
+    <link rel="apple-touch-icon" href="assets/icon-192x192.png">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <p>Loading Trip Planner...</p>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app" class="app-container hidden">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="trip-selector-btn" class="trip-selector-btn">
+                    <span id="current-trip-name">My Trip</span>
+                    <svg class="chevron-down" width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="header-center">
+                <nav class="view-switcher">
+                    <button id="day-view" class="view-btn active" data-view="day">Day</button>
+                    <button id="week-view" class="view-btn" data-view="week">Week</button>
+                    <button id="month-view" class="view-btn" data-view="month">Month</button>
+                </nav>
+            </div>
+            
+            <div class="header-right">
+                <button id="today-btn" class="header-btn">Today</button>
+                <button id="prev-btn" class="nav-btn" aria-label="Previous">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M10 4l-4 4 4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                </button>
+                <button id="next-btn" class="nav-btn" aria-label="Next">
+                    <svg width="16" height="16" viewBox="0 0 16 16">
+                        <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                </button>
+                <button id="menu-btn" class="header-btn">⋯</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Activity Bank Sidebar -->
+            <aside id="activity-bank" class="activity-bank">
+                <div class="bank-header">
+                    <h3>Activity Bank</h3>
+                    <button id="add-activity-btn" class="add-btn" aria-label="Add activity">+</button>
+                </div>
+                <div id="bank-activities" class="bank-activities">
+                    <!-- Activities will be populated here -->
+                </div>
+                <div class="bank-empty" id="bank-empty">
+                    <p>Drag activities here to save them for later</p>
+                </div>
+            </aside>
+
+            <!-- Calendar Container -->
+            <main class="calendar-container">
+                <div class="calendar-header">
+                    <h2 id="calendar-title">January 2025</h2>
+                </div>
+                
+                <!-- Day View -->
+                <div id="day-view-container" class="view-container">
+                    <div class="day-header">
+                        <div class="time-column"></div>
+                        <div class="day-column">
+                            <div class="day-label" id="day-label">Today</div>
+                            <div class="day-date" id="day-date">Jan 1</div>
+                        </div>
+                    </div>
+                    <div class="day-content">
+                        <div class="time-slots" id="time-slots">
+                            <!-- Time slots will be generated -->
+                        </div>
+                        <div class="day-activities" id="day-activities">
+                            <!-- Activities will be placed here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Week View -->
+                <div id="week-view-container" class="view-container hidden">
+                    <div class="week-header">
+                        <div class="time-column"></div>
+                        <div class="week-days" id="week-days">
+                            <!-- Week days will be generated -->
+                        </div>
+                    </div>
+                    <div class="week-content">
+                        <div class="time-slots" id="week-time-slots">
+                            <!-- Time slots will be generated -->
+                        </div>
+                        <div class="week-activities" id="week-activities">
+                            <!-- Activities will be placed here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Month View -->
+                <div id="month-view-container" class="view-container hidden">
+                    <div class="month-header">
+                        <div class="month-days-header">
+                            <div class="month-day-header">Sun</div>
+                            <div class="month-day-header">Mon</div>
+                            <div class="month-day-header">Tue</div>
+                            <div class="month-day-header">Wed</div>
+                            <div class="month-day-header">Thu</div>
+                            <div class="month-day-header">Fri</div>
+                            <div class="month-day-header">Sat</div>
+                        </div>
+                    </div>
+                    <div class="month-grid" id="month-grid">
+                        <!-- Month grid will be generated -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Trip Selector Modal -->
+    <div id="trip-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Trip Management</h3>
+                <button id="close-trip-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="trips-list" id="trips-list">
+                    <!-- Trips will be populated here -->
+                </div>
+                <div class="trip-actions">
+                    <button id="new-trip-btn" class="primary-btn">+ New Trip</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Details Modal -->
+    <div id="activity-modal" class="modal hidden">
+        <div class="modal-content activity-modal-content">
+            <div class="modal-header">
+                <h3 id="activity-modal-title">Activity Details</h3>
+                <button id="close-activity-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="activity-form">
+                    <div class="form-group">
+                        <label for="activity-title">Title *</label>
+                        <input type="text" id="activity-title" name="title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="activity-description">Description</label>
+                        <textarea id="activity-description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="activity-start">Start Time</label>
+                            <input type="datetime-local" id="activity-start" name="start">
+                        </div>
+                        <div class="form-group">
+                            <label for="activity-end">End Time</label>
+                            <input type="datetime-local" id="activity-end" name="end">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="activity-location">Location/Website</label>
+                        <input type="url" id="activity-location" name="locationUrl" placeholder="https://...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="activity-hours">Opening Hours</label>
+                        <input type="text" id="activity-hours" name="openingHours" placeholder="9:00 AM - 6:00 PM">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="activity-tags">Tags</label>
+                        <input type="text" id="activity-tags" name="tags" placeholder="restaurant, outdoor, family">
+                        <small>Separate with commas</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="activity-notes">Notes</label>
+                        <textarea id="activity-notes" name="notes" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="delete-activity-btn" class="danger-btn">Delete</button>
+                        <div class="form-actions-right">
+                            <button type="button" id="cancel-activity-btn" class="secondary-btn">Cancel</button>
+                            <button type="submit" id="save-activity-btn" class="primary-btn">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Modal -->
+    <div id="menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Menu</h3>
+                <button id="close-menu-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="menu-section">
+                    <h4>Import/Export</h4>
+                    <button id="import-btn" class="menu-btn">Import Trip</button>
+                    <button id="export-btn" class="menu-btn">Export Trip</button>
+                </div>
+                <div class="menu-section">
+                    <h4>Sharing</h4>
+                    <button id="share-btn" class="menu-btn">Share Trip</button>
+                </div>
+                <div class="menu-section">
+                    <h4>Account</h4>
+                    <button id="sync-btn" class="menu-btn">Cloud Sync</button>
+                    <button id="settings-btn" class="menu-btn">Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- File Input (Hidden) -->
+    <input type="file" id="file-input" accept=".csv,.json" style="display: none;">
+
+    <!-- Scripts -->
+    <script type="module" src="scripts/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
