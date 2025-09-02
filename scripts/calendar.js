@@ -585,4 +585,17 @@ export class CalendarManager {
         
         return positioned;
     }
+    
+// Date formatting utilities to avoid timezone issues
+formatDateForStorage(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+parseDateFromStorage(dateString) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}
 }
