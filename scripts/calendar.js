@@ -1,0 +1,540 @@
+// calendar.js - Calendar Views and Rendering
+export class CalendarManager {
+    constructor() {
+        this.currentDate = new Date();
+        this.currentView = 'day';
+        this.timeSlots = this.generateTimeSlots();
+    }
+    
+    async init(date = new Date(), view = 'day') {
+        this.currentDate = new Date(date);
+        this.currentView = view;
+        console.log('Calendar manager initialized');
+    }
+    
+    setDate(date) {
+        this.currentDate = new Date(date);
+    }
+    
+    setView(view) {
+        this.currentView = view;
+    }
+    
+    getCurrentDate() {
+        return new Date(this.currentDate);
+    }
+    
+    getDisplayTitle() {
+        const options = { month: 'long', year: 'numeric' };
+        
+        switch (this.currentView) {
+            case 'day':
+                return this.currentDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+                });
+            case 'week':
+                const weekStart = this.getWeekStart(this.currentDate);
+                const weekEnd = this.getWeekEnd(this.currentDate);
+                if (weekStart.getMonth() === weekEnd.getMonth()) {
+                    return `${weekStart.toLocaleDateString('en-US', options)}`;
+                } else {
+                    return `${weekStart.toLocaleDateString('en-US', { month: 'short' })} - ${weekEnd.toLocaleDateString('en-US', options)}`;
+                }
+            case 'month':
+                return this.currentDate.toLocaleDateString('en-US', options);
+            default:
+                return '';
+        }
+    }
+    
+    navigatePrevious() {
+        switch (this.currentView) {
+            case 'day':
+                this.currentDate.setDate(this.currentDate.getDate() - 1);
+                break;
+            case 'week':
+                this.currentDate.setDate(this.currentDate.getDate() - 7);
+                break;
+            case 'month':
+                this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+                break;
+        }
+    }
+    
+    navigateNext() {
+        switch (this.currentView) {
+            case 'day':
+                this.currentDate.setDate(this.currentDate.getDate() + 1);
+                break;
+            case 'week':
+                this.currentDate.setDate(this.currentDate.getDate() + 7);
+                break;
+            case 'month':
+                this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+                break;
+        }
+    }
+    
+    async render(activities = []) {
+        switch (this.currentView) {
+            case 'day':
+                await this.renderDayView(activities);
+                break;
+            case 'week':
+                await this.renderWeekView(activities);
+                break;
+            case 'month':
+                await this.renderMonthView(activities);
+                break;
+        }
+    }
+    
+    async renderDayView(activities) {
+        const dayContainer = document.getElementById('day-view-container');
+        if (!dayContainer) return;
+        
+        // Update day header
+        this.updateDayHeader();
+        
+        // Render time slots
+        this.renderTimeSlots('time-slots');
+        this.renderTimeSlots('day-activities', true);
+        
+        // Render activities for this day
+        const dayActivities = this.getActivitiesForDate(activities, this.currentDate);
+        this.renderDayActivities(dayActivities);
+    }
+    
+    updateDayHeader() {
+        const dayLabel = document.getElementById('day-label');
+        const dayDate = document.getElementById('day-date');
+        
+        if (dayLabel) {
+            const today = new Date();
+            const isToday = this.isSameDate(this.currentDate, today);
+            const isTomorrow = this.isSameDate(this.currentDate, new Date(today.getTime() + 24 * 60 * 60 * 1000));
+            const isYesterday = this.isSameDate(this.currentDate, new Date(today.getTime() - 24 * 60 * 60 * 1000));
+            
+            if (isToday) {
+                dayLabel.textContent = 'Today';
+            } else if (isTomorrow) {
+                dayLabel.textContent = 'Tomorrow';
+            } else if (isYesterday) {
+                dayLabel.textContent = 'Yesterday';
+            } else {
+                dayLabel.textContent = this.currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+            }
+        }
+        
+        if (dayDate) {
+            dayDate.textContent = this.currentDate.toLocaleDateString('en-US', { 
+                month: 'short', day: 'numeric' 
+            });
+        }
+    }
+    
+    renderTimeSlots(containerId, isDropZone = false) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        this.timeSlots.forEach(timeSlot => {
+            const slotElement = document.createElement('div');
+            slotElement.className = 'time-slot';
+            if (isDropZone) {
+                slotElement.classList.add('drop-zone');
+                slotElement.dataset.date = this.currentDate.toISOString().split('T')[0];
+                slotElement.dataset.time = timeSlot.time;
+            } else {
+                slotElement.textContent = timeSlot.display;
+            }
+            container.appendChild(slotElement);
+        });
+    }
+    
+    renderDayActivities(activities) {
+        const container = document.getElementById('day-activities');
+        if (!container) return;
+        
+        // Clear existing activities
+        const existingActivities = container.querySelectorAll('.calendar-activity');
+        existingActivities.forEach(el => el.remove());
+        
+        activities.forEach(activity => {
+            if (activity.start && activity.end) {
+                const activityElement = this.createCalendarActivityElement(activity);
+                this.positionDayActivity(activityElement, activity);
+                container.appendChild(activityElement);
+            }
+        });
+    }
+    
+    async renderWeekView(activities) {
+        const weekContainer = document.getElementById('week-view-container');
+        if (!weekContainer) return;
+        
+        // Generate week dates
+        const weekStart = this.getWeekStart(this.currentDate);
+        const weekDays = [];
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(weekStart);
+            day.setDate(weekStart.getDate() + i);
+            weekDays.push(day);
+        }
+        
+        // Update week header
+        this.updateWeekHeader(weekDays);
+        
+        // Render time slots
+        this.renderTimeSlots('week-time-slots');
+        
+        // Render week grid
+        this.renderWeekGrid(weekDays, activities);
+    }
+    
+    updateWeekHeader(weekDays) {
+        const weekDaysContainer = document.getElementById('week-days');
+        if (!weekDaysContainer) return;
+        
+        weekDaysContainer.innerHTML = '';
+        
+        weekDays.forEach(day => {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'week-day';
+            
+            const label = document.createElement('div');
+            label.className = 'week-day-label';
+            label.textContent = day.toLocaleDateString('en-US', { weekday: 'short' });
+            
+            const date = document.createElement('div');
+            date.className = 'week-day-date';
+            date.textContent = day.getDate();
+            
+            // Highlight today
+            const today = new Date();
+            if (this.isSameDate(day, today)) {
+                dayElement.classList.add('today');
+            }
+            
+            dayElement.appendChild(label);
+            dayElement.appendChild(date);
+            weekDaysContainer.appendChild(dayElement);
+        });
+    }
+    
+    renderWeekGrid(weekDays, activities) {
+        const weekActivitiesContainer = document.getElementById('week-activities');
+        if (!weekActivitiesContainer) return;
+        
+        weekActivitiesContainer.innerHTML = '';
+        
+        weekDays.forEach((day, dayIndex) => {
+            const dayColumn = document.createElement('div');
+            dayColumn.className = 'week-day-column drop-zone';
+            dayColumn.dataset.date = day.toISOString().split('T')[0];
+            
+            // Add time slot dividers
+            this.timeSlots.forEach(timeSlot => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'time-slot drop-zone';
+                slotDiv.dataset.date = day.toISOString().split('T')[0];
+                slotDiv.dataset.time = timeSlot.time;
+                dayColumn.appendChild(slotDiv);
+            });
+            
+            // Add activities for this day
+            const dayActivities = this.getActivitiesForDate(activities, day);
+            dayActivities.forEach(activity => {
+                if (activity.start && activity.end) {
+                    const activityElement = this.createCalendarActivityElement(activity);
+                    this.positionWeekActivity(activityElement, activity, dayIndex);
+                    dayColumn.appendChild(activityElement);
+                }
+            });
+            
+            weekActivitiesContainer.appendChild(dayColumn);
+        });
+    }
+    
+    async renderMonthView(activities) {
+        const monthContainer = document.getElementById('month-grid');
+        if (!monthContainer) return;
+        
+        monthContainer.innerHTML = '';
+        
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+        
+        // Calculate start and end of month grid (including partial weeks)
+        const gridStart = this.getWeekStart(firstDay);
+        const gridEnd = this.getWeekEnd(lastDay);
+        
+        const current = new Date(gridStart);
+        const today = new Date();
+        
+        while (current <= gridEnd) {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'month-day drop-zone';
+            dayElement.dataset.date = current.toISOString().split('T')[0];
+            
+            // Check if day is in current month
+            if (current.getMonth() !== this.currentDate.getMonth()) {
+                dayElement.classList.add('other-month');
+            }
+            
+            // Highlight today
+            if (this.isSameDate(current, today)) {
+                dayElement.classList.add('today');
+            }
+            
+            // Day number
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'month-day-number';
+            dayNumber.textContent = current.getDate();
+            dayElement.appendChild(dayNumber);
+            
+            // Activities container
+            const activitiesContainer = document.createElement('div');
+            activitiesContainer.className = 'month-activities';
+            
+            // Add activities for this day
+            const dayActivities = this.getActivitiesForDate(activities, current);
+            dayActivities.slice(0, 3).forEach(activity => { // Limit to 3 activities visible
+                const activityElement = document.createElement('div');
+                activityElement.className = 'month-activity';
+                activityElement.textContent = activity.title;
+                activityElement.dataset.activityId = activity.id;
+                
+                // Add click handler
+                activityElement.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Trigger activity details modal (will be handled by app)
+                    const event = new CustomEvent('activityClick', { detail: { activity } });
+                    document.dispatchEvent(event);
+                });
+                
+                activitiesContainer.appendChild(activityElement);
+            });
+            
+            if (dayActivities.length > 3) {
+                const moreElement = document.createElement('div');
+                moreElement.className = 'month-activity';
+                moreElement.textContent = `+${dayActivities.length - 3} more`;
+                moreElement.style.opacity = '0.7';
+                activitiesContainer.appendChild(moreElement);
+            }
+            
+            dayElement.appendChild(activitiesContainer);
+            monthContainer.appendChild(dayElement);
+            
+            // Move to next day
+            current.setDate(current.getDate() + 1);
+        }
+    }
+    
+    createCalendarActivityElement(activity) {
+        const element = document.createElement('div');
+        element.className = 'calendar-activity';
+        element.draggable = true;
+        element.dataset.activityId = activity.id;
+        element.textContent = activity.title;
+        
+        // Add click handler for details
+        element.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const event = new CustomEvent('activityClick', { detail: { activity } });
+            document.dispatchEvent(event);
+        });
+        
+        return element;
+    }
+    
+    positionDayActivity(element, activity) {
+        const startTime = new Date(activity.start);
+        const endTime = new Date(activity.end);
+        
+        // Calculate position based on time
+        const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+        const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+        const duration = endMinutes - startMinutes;
+        
+        // Each hour is 60px, starting from 6 AM (360 minutes)
+        const startOffset = Math.max(0, startMinutes - 360); // 6 AM = 360 minutes
+        const top = (startOffset / 60) * 60; // 60px per hour
+        const height = Math.max(30, (duration / 60) * 60); // Minimum 30px height
+        
+        element.style.top = `${top}px`;
+        element.style.height = `${height}px`;
+        
+        // Add time to activity if not too small
+        if (height >= 40) {
+            const timeSpan = document.createElement('div');
+            timeSpan.style.fontSize = '11px';
+            timeSpan.style.opacity = '0.8';
+            timeSpan.textContent = `${this.formatTime(startTime)} - ${this.formatTime(endTime)}`;
+            element.appendChild(timeSpan);
+        }
+    }
+    
+    positionWeekActivity(element, activity, dayIndex) {
+        const startTime = new Date(activity.start);
+        const endTime = new Date(activity.end);
+        
+        const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+        const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+        
+        const startOffset = Math.max(0, startMinutes - 360); // 6 AM = 360 minutes
+        const top = (startOffset / 60) * 60; // 60px per hour
+        const height = Math.max(20, (duration / 60) * 60);
+        
+        element.style.position = 'absolute';
+        element.style.top = `${top}px`;
+        element.style.height = `${height}px`;
+        element.style.left = '2px';
+        element.style.right = '2px';
+        element.style.fontSize = '11px';
+        element.style.padding = '2px 4px';
+    }
+    
+    generateTimeSlots() {
+        const slots = [];
+        
+        // Generate slots from 6 AM to 11 PM in 1-hour increments
+        for (let hour = 6; hour <= 23; hour++) {
+            const time24 = `${hour.toString().padStart(2, '0')}:00`;
+            const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+            const ampm = hour < 12 ? 'AM' : 'PM';
+            const display = hour === 12 ? '12 PM' : `${hour12} ${ampm}`;
+            
+            slots.push({
+                time: time24,
+                display: display,
+                hour: hour
+            });
+        }
+        
+        return slots;
+    }
+    
+    getActivitiesForDate(activities, date) {
+        return activities.filter(activity => {
+            if (!activity.start) return false;
+            const activityDate = new Date(activity.start);
+            return this.isSameDate(activityDate, date);
+        }).sort((a, b) => {
+            const aTime = new Date(a.start);
+            const bTime = new Date(b.start);
+            return aTime - bTime;
+        });
+    }
+    
+    getWeekStart(date) {
+        const start = new Date(date);
+        const day = start.getDay();
+        const diff = start.getDate() - day;
+        start.setDate(diff);
+        start.setHours(0, 0, 0, 0);
+        return start;
+    }
+    
+    getWeekEnd(date) {
+        const end = new Date(this.getWeekStart(date));
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        return end;
+    }
+    
+    getMonthStart(date) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+    
+    getMonthEnd(date) {
+        return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    }
+    
+    isSameDate(date1, date2) {
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+    }
+    
+    formatTime(date) {
+        return date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+    }
+    
+    formatDate(date) {
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+    
+    // Utility methods for drag and drop
+    getTimeSlotFromPosition(y, containerElement) {
+        const containerRect = containerElement.getBoundingClientRect();
+        const relativeY = y - containerRect.top;
+        const slotHeight = 60; // Each time slot is 60px
+        const slotIndex = Math.floor(relativeY / slotHeight);
+        
+        if (slotIndex >= 0 && slotIndex < this.timeSlots.length) {
+            return this.timeSlots[slotIndex];
+        }
+        
+        return null;
+    }
+    
+    getDateFromElement(element) {
+        // Look for date in element or parent elements
+        let current = element;
+        while (current && !current.dataset.date) {
+            current = current.parentElement;
+        }
+        return current ? current.dataset.date : null;
+    }
+    
+    getTimeFromElement(element) {
+        // Look for time in element or parent elements
+        let current = element;
+        while (current && !current.dataset.time) {
+            current = current.parentElement;
+        }
+        return current ? current.dataset.time : null;
+    }
+    
+    // Helper method to check if date is within trip range
+    isDateInTripRange(date, trip) {
+        if (!trip || !trip.dateRange) return true;
+        
+        const checkDate = new Date(date);
+        const startDate = new Date(trip.dateRange.start);
+        const endDate = new Date(trip.dateRange.end);
+        
+        return checkDate >= startDate && checkDate <= endDate;
+    }
+    
+    // Get all dates for current view (useful for rendering)
+    getCurrentViewDates() {
+        switch (this.currentView) {
+            case 'day':
+                return [new Date(this.currentDate)];
+            case 'week':
+                const weekStart = this.getWeekStart(this.currentDate);
+                const weekDates = [];
+                for (let i = 0; i < 7; i++) {
+                    const day = new Date(weekStart);
+                    day.setDate(weekStart.getDate() + i);
+                    weekDates.push(day);
+                }
+                return weekDates;
+            case 'month':
+                const monthStart = this.getMonthStart(this.currentDate);
+                const monthEnd = this.getMonthEnd(this.currentDate);
+                const gridStart = this.getWeekStart(monthStart);
+                const gridEnd = this.getWeekEnd(monthEnd);
+                
+                const mont
