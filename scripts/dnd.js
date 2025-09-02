@@ -394,33 +394,35 @@ export class DragDropManager {
     
     // Drop handlers
     async handleCalendarDrop(e) {
-        e.preventDefault();
-        
-        const activityId = e.dataTransfer.getData('text/plain');
-        if (!activityId || !this.app) return;
-        
-        const dropTarget = e.currentTarget;
-        const date = dropTarget.dataset.date;
-        const time = dropTarget.dataset.time;
-        
-        if (!date) {
-            console.warn('No date found on drop target');
-            return;
-        }
-        
-        console.log(`Dropping activity ${activityId} on ${date} at ${time || 'all day'}`);
-        
-        try {
-            await this.app.moveActivityToCalendar(activityId, date, time);
-            this.app.showToast('Activity scheduled', 'success');
-        } catch (error) {
-            console.error('Failed to drop activity on calendar:', error);
-            this.app.showToast('Failed to schedule activity', 'error');
-        }
-        
-        // Clean up visual feedback
-        dropTarget.classList.remove('drag-over');
+    e.preventDefault();
+    
+    const activityId = e.dataTransfer.getData('text/plain');
+    if (!activityId || !this.app) return;
+    
+    const dropTarget = e.currentTarget;
+    const date = dropTarget.dataset.date;
+    const time = dropTarget.dataset.time;
+    
+    if (!date) {
+        console.warn('No date found on drop target');
+        return;
     }
+    
+    console.log(`Dropping activity ${activityId} on ${date} at ${time || 'all day'}`);
+    console.log('Drop target element:', dropTarget);
+    console.log('Drop target dataset:', dropTarget.dataset);
+    
+    try {
+        await this.app.moveActivityToCalendar(activityId, date, time);
+        this.app.showToast('Activity scheduled', 'success');
+    } catch (error) {
+        console.error('Failed to drop activity on calendar:', error);
+        this.app.showToast('Failed to schedule activity', 'error');
+    }
+    
+    // Clean up visual feedback
+    dropTarget.classList.remove('drag-over');
+}
     
     async handleBankDrop(e) {
         e.preventDefault();
