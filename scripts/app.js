@@ -943,40 +943,47 @@ class TripPlannerApp {
     }
     
     async moveActivityToCalendar(activityId, date, time = null) {
-        const activity = this.activities.find(a => a.id === activityId);
-        if (!activity) return;
+    const activity = this.activities.find(a => a.id === activityId);
+    if (!activity) return;
+    
+    console.log(`Moving activity "${activity.title}" to date: ${date}, time: ${time}`);
+    
+    activity.source = 'calendar';
+    
+    if (time) {
+        const [hours, minutes] = time.split(':').map(Number);
+        const startDate = this.calendar.parseDateFromStorage(date);
+        console.log('Parsed start date (before setting time):', startDate);
+        startDate.setHours(hours, minutes, 0, 0);
+        console.log('Start date (after setting time):', startDate);
         
-        activity.source = 'calendar';
+        const endDate = new Date(startDate);
+        endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
         
-        if (time) {
-            const [hours, minutes] = time.split(':').map(Number);
-            const startDate = new Date(date);
-            startDate.setHours(hours, minutes, 0, 0);
-            
-            const endDate = new Date(startDate);
-            endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
-            
-            activity.start = startDate.toISOString();
-            activity.end = endDate.toISOString();
-        } else {
-            // All day event
-            const startDate = new Date(date);
-            startDate.setHours(9, 0, 0, 0); // Default 9 AM
-            const endDate = new Date(date);
-            endDate.setHours(10, 0, 0, 0); // Default 1 hour
-            
-            activity.start = startDate.toISOString();
-            activity.end = endDate.toISOString();
-        }
+        activity.start = startDate.toISOString();
+        activity.end = endDate.toISOString();
+    } else {
+        // All day event
+        const startDate = this.calendar.parseDateFromStorage(date);
+        console.log('Parsed start date (all day):', startDate);
+        startDate.setHours(9, 0, 0, 0); // Default 9 AM
+        const endDate = new Date(startDate);
+        endDate.setHours(10, 0, 0, 0); // Default 1 hour
         
-        try {
-            await this.db.saveActivity(activity);
-            await this.loadTripActivities();
-            await this.renderCalendar();
-        } catch (error) {
-            console.error('Failed to move activity to calendar:', error);
-            this.showToast('Failed to move activity', 'error');
-        }
+        activity.start = startDate.toISOString();
+        activity.end = endDate.toISOString();
+    }
+    
+    console.log('Final activity start:', activity.start);
+    console.log('Final activity end:', activity.end);
+    
+    try {
+        await this.db.saveActivity(activity);
+        await this.loadTripActivities();
+        await this.renderCalendar();
+    } catch (error) {
+        console.error('Failed to move activity to calendar:', error);
+        this.showToast('Failed to move activity', 'error');
     }
 }
 
