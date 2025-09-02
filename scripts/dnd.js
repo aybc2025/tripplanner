@@ -592,4 +592,62 @@ export class DragDropManager {
         date.setMilliseconds(0);
         
         return date;
-      
+    }
+    
+    // Batch operations for multiple activities
+    async moveMultipleActivities(activityIds, targetDate, targetTime) {
+        const results = [];
+        
+        for (const activityId of activityIds) {
+            try {
+                await this.app.moveActivityToCalendar(activityId, targetDate, targetTime);
+                results.push({ activityId, success: true });
+                
+                // Offset time for next activity to avoid conflicts
+                if (targetTime) {
+                    const [hours, minutes] = targetTime.split(':').map(Number);
+                    const nextTime = new Date();
+                    nextTime.setHours(hours, minutes + 60); // 1 hour offset
+                    targetTime = `${nextTime.getHours().toString().padStart(2, '0')}:${nextTime.getMinutes().toString().padStart(2, '0')}`;
+                }
+            } catch (error) {
+                console.error(`Failed to move activity ${activityId}:`, error);
+                results.push({ activityId, success: false, error: error.message });
+            }
+        }
+        
+        return results;
+    }
+    
+    // Accessibility helpers
+    announceDropResult(success, activityTitle, targetDescription) {
+        // Create announcement for screen readers
+        const announcement = document.createElement('div');
+        announcement.setAttribute('aria-live', 'polite');
+        announcement.setAttribute('aria-atomic', 'true');
+        announcement.className = 'sr-only';
+        
+        if (success) {
+            announcement.textContent = `${activityTitle} moved to ${targetDescription}`;
+        } else {
+            announcement.textContent = `Failed to move ${activityTitle}`;
+        }
+        
+        document.body.appendChild(announcement);
+        
+        // Remove after announcement
+        setTimeout(() => {
+            document.body.removeChild(announcement);
+        }, 1000);
+    }
+    
+    // Debug utilities
+    logDragState() {
+        console.log('Drag State:', {
+            isDragging: this.isDragging,
+            draggedElement: this.draggedElement?.dataset.activityId,
+            draggedActivity: this.draggedActivity?.title,
+            dropZonesCount: this.dropZones.length
+        });
+    }
+}
