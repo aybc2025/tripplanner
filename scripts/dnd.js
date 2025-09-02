@@ -10,6 +10,13 @@ export class DragDropManager {
         // Touch support
         this.touchStartPos = { x: 0, y: 0 };
         this.touchDragThreshold = 10;
+        
+        // Bound event handlers for proper cleanup
+        this.boundHandlers = {
+            dragOver: this.handleDragOver.bind(this),
+            dragEnter: this.handleDragEnter.bind(this),
+            dragLeave: this.handleDragLeave.bind(this),
+        };
     }
     
     init(app) {
@@ -26,11 +33,8 @@ export class DragDropManager {
     }
     
     setupCalendarDropZones() {
-        // Remove existing drop zone listeners
-        this.dropZones.forEach(zone => {
-            this.removeDragListeners(zone);
-        });
-        this.dropZones = [];
+        // Remove existing drop zone listeners safely
+        this.cleanupDropZones();
         
         // Setup new drop zones based on current view
         const view = this.app.currentView;
@@ -60,6 +64,16 @@ export class DragDropManager {
         }
     }
     
+    cleanupDropZones() {
+        // Safely remove event listeners from existing drop zones
+        this.dropZones.forEach(zone => {
+            if (zone && zone.parentNode) {
+                this.removeDragListeners(zone);
+            }
+        });
+        this.dropZones = [];
+    }
+    
     setupDayDropZones() {
         const dayActivities = document.getElementById('day-activities');
         if (!dayActivities) return;
@@ -85,14 +99,28 @@ export class DragDropManager {
     }
     
     setupDragElement(element) {
+        if (!element) return;
+        
+        // Store reference to bound handlers for cleanup
+        element._dragHandlers = {
+            dragStart: this.handleDragStart.bind(this),
+            dragEnd: this.handleDragEnd.bind(this),
+            touchStart: this.handleTouchStart.bind(this),
+            touchMove: this.handleTouchMove.bind(this),
+            touchEnd: this.handleTouchEnd.bind(this)
+        };
+        
         // Mouse events
-        element.addEventListener('dragstart', this.handleDragStart.bind(this));
-        element.addEventListener('dragend', this.handleDragEnd.bind(this));
+        element.addEventListener('dragstart', element._dragHandlers.dragStart);
+        element.addEventListener('dragend', element._dragHandlers.dragEnd);
         
         // Touch events for mobile
-        element.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-        element.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-        element.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+        element.addEventListener('touchstart', element._dragHandlers.touchStart, { passive: false });
+        element.addEventListener('touchmove', element._dragHandlers.touchMove, { passive: false });
+        element.addEventListener('touchend', element._dragHandlers.touchEnd, { passive: false });
+        
+        // Make element draggable
+        element.draggable = true;
         
         // Prevent default drag behavior on images and other elements
         element.addEventListener('dragstart', (e) => {
@@ -103,28 +131,45 @@ export class DragDropManager {
     }
     
     setupDropZone(element, dropHandler) {
+        if (!element) return;
+        
         // Store original handler for cleanup
         element._dropHandler = dropHandler;
+        element.classList.add('drop-zone');
         
         // Mouse events
-        element.addEventListener('dragover', this.handleDragOver.bind(this));
-        element.addEventListener('dragenter', this.handleDragEnter.bind(this));
-        element.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        element.addEventListener('dragover', this.boundHandlers.dragOver);
+        element.addEventListener('dragenter', this.boundHandlers.dragEnter);
+        element.addEventListener('dragleave', this.boundHandlers.dragLeave);
         element.addEventListener('drop', dropHandler);
         
         this.dropZones.push(element);
     }
     
     removeDragListeners(element) {
-        // Clean up event listeners
-        element.removeEventListener('dragover', this.handleDragOver.bind(this));
-        element.removeEventListener('dragenter', this.handleDragEnter.bind(this));
-        element.removeEventListener('dragleave', this.handleDragLeave.bind(this));
+        if (!element || !element.parentNode) return;
+        
+        // Clean up drag element listeners
+        if (element._dragHandlers) {
+            element.removeEventListener('dragstart', element._dragHandlers.dragStart);
+            element.removeEventListener('dragend', element._dragHandlers.dragEnd);
+            element.removeEventListener('touchstart', element._dragHandlers.touchStart);
+            element.removeEventListener('touchmove', element._dragHandlers.touchMove);
+            element.removeEventListener('touchend', element._dragHandlers.touchEnd);
+            delete element._dragHandlers;
+        }
+        
+        // Clean up drop zone listeners
+        element.removeEventListener('dragover', this.boundHandlers.dragOver);
+        element.removeEventListener('dragenter', this.boundHandlers.dragEnter);
+        element.removeEventListener('dragleave', this.boundHandlers.dragLeave);
         
         if (element._dropHandler) {
             element.removeEventListener('drop', element._dropHandler);
             delete element._dropHandler;
         }
+        
+        element.classList.remove('drop-zone');
     }
     
     // Mouse drag handlers
@@ -287,7 +332,7 @@ export class DragDropManager {
         }
         
         // Clean up
-        if (this.dragPreview) {
+        if (this.dragPreview && this.dragPreview.parentNode) {
             document.body.removeChild(this.dragPreview);
             this.dragPreview = null;
         }
@@ -410,13 +455,6 @@ export class DragDropManager {
         highlightedZones.forEach(zone => {
             zone.classList.remove('drag-over');
         });
-    }
-    
-    removeDragListeners(element) {
-        // Create new element to remove all listeners
-        const newElement = element.cloneNode(true);
-        element.parentNode.replaceChild(newElement, element);
-        return newElement;
     }
     
     // Advanced drag features
@@ -637,7 +675,9 @@ export class DragDropManager {
         
         // Remove after announcement
         setTimeout(() => {
-            document.body.removeChild(announcement);
+            if (announcement.parentNode) {
+                document.body.removeChild(announcement);
+            }
         }, 1000);
     }
     
@@ -649,5 +689,24 @@ export class DragDropManager {
             draggedActivity: this.draggedActivity?.title,
             dropZonesCount: this.dropZones.length
         });
+    }
+    
+    // Complete cleanup when destroyed
+    destroy() {
+        this.cleanupDropZones();
+        
+        // Clean up any remaining drag previews
+        if (this.dragPreview && this.dragPreview.parentNode) {
+            document.body.removeChild(this.dragPreview);
+        }
+        
+        // Reset state
+        this.draggedElement = null;
+        this.draggedActivity = null;
+        this.isDragging = false;
+        this.dropZones = [];
+        this.dragPreview = null;
+        
+        console.log('DragDropManager destroyed');
     }
 }
