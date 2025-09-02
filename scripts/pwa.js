@@ -581,4 +581,64 @@ export class PWAManager {
                 const permission = await Notification.requestPermission();
                 return permission === 'granted';
             } catch (error) {
-                console.error('Notification pe
+                console.error('Notification permission request failed:', error);
+                return false;
+            }
+        }
+    }
+    
+    async showNotification(title, options = {}) {
+        const hasPermission = await this.requestNotificationPermission();
+        if (!hasPermission) return;
+        
+        const notification = new Notification(title, {
+            icon: 'assets/icon-192x192.png',
+            badge: 'assets/icon-192x192.png',
+            ...options
+        });
+        
+        // Auto-close after 5 seconds
+        setTimeout(() => notification.close(), 5000);
+        
+        return notification;
+    }
+    
+    // Utility methods
+    showToast(message, type = 'info') {
+        // Use the app's toast system if available
+        if (this.app && this.app.showToast) {
+            this.app.showToast(message, type);
+        } else {
+            // Fallback console log
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+    }
+    
+    // Debug and diagnostics
+    async generateDiagnosticReport() {
+        const features = this.checkPWAFeatures();
+        const storage = await this.checkStorageQuota();
+        
+        const report = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            online: this.isOnline,
+            features,
+            storage,
+            serviceWorker: {
+                registered: !!this.registration,
+                updateAvailable: this.updateAvailable
+            },
+            performance: {
+                memory: performance.memory ? {
+                    used: performance.memory.usedJSHeapSize,
+                    total: performance.memory.totalJSHeapSize,
+                    limit: performance.memory.jsHeapSizeLimit
+                } : null
+            }
+        };
+        
+        console.log('Diagnostic report:', report);
+        return report;
+    }
+}
