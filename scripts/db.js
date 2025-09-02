@@ -577,4 +577,18 @@ export class TripDatabase {
         } catch (error) {
             return {
                 status: 'error',
-                error: error.m
+                error: error.message,
+                timestamp: new Date().toISOString()
+            };
+        }
+    }
+    
+    // Close database connection
+    close() {
+        if (this.db) {
+            this.db.close();
+            this.db = null;
+            console.log('Database connection closed');
+        }
+    }
+}
