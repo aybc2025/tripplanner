@@ -943,49 +943,50 @@ class TripPlannerApp {
     }
     
     async moveActivityToCalendar(activityId, date, time = null) {
-    const activity = this.activities.find(a => a.id === activityId);
-    if (!activity) return;
-    
-    console.log(`Moving activity "${activity.title}" to date: ${date}, time: ${time}`);
-    
-    activity.source = 'calendar';
-    
-    if (time) {
-        const [hours, minutes] = time.split(':').map(Number);
-        const startDate = this.calendar.parseDateFromStorage(date);
-        console.log('Parsed start date (before setting time):', startDate);
-        startDate.setHours(hours, minutes, 0, 0);
-        console.log('Start date (after setting time):', startDate);
+        const activity = this.activities.find(a => a.id === activityId);
+        if (!activity) return;
         
-        const endDate = new Date(startDate);
-        endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
+        console.log(`Moving activity "${activity.title}" to date: ${date}, time: ${time}`);
         
-        activity.start = startDate.toISOString();
-        activity.end = endDate.toISOString();
-    } else {
-        // All day event
-        const startDate = this.calendar.parseDateFromStorage(date);
-        console.log('Parsed start date (all day):', startDate);
-        startDate.setHours(9, 0, 0, 0); // Default 9 AM
-        const endDate = new Date(startDate);
-        endDate.setHours(10, 0, 0, 0); // Default 1 hour
+        activity.source = 'calendar';
         
-        activity.start = startDate.toISOString();
-        activity.end = endDate.toISOString();
+        if (time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            const startDate = this.calendar.parseDateFromStorage(date);
+            console.log('Parsed start date (before setting time):', startDate);
+            startDate.setHours(hours, minutes, 0, 0);
+            console.log('Start date (after setting time):', startDate);
+            
+            const endDate = new Date(startDate);
+            endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
+            
+            activity.start = startDate.toISOString();
+            activity.end = endDate.toISOString();
+        } else {
+            // All day event
+            const startDate = this.calendar.parseDateFromStorage(date);
+            console.log('Parsed start date (all day):', startDate);
+            startDate.setHours(9, 0, 0, 0); // Default 9 AM
+            const endDate = new Date(startDate);
+            endDate.setHours(10, 0, 0, 0); // Default 1 hour
+            
+            activity.start = startDate.toISOString();
+            activity.end = endDate.toISOString();
+        }
+        
+        console.log('Final activity start:', activity.start);
+        console.log('Final activity end:', activity.end);
+        
+        try {
+            await this.db.saveActivity(activity);
+            await this.loadTripActivities();
+            await this.renderCalendar();
+        } catch (error) {
+            console.error('Failed to move activity to calendar:', error);
+            this.showToast('Failed to move activity', 'error');
+        }
     }
-    
-    console.log('Final activity start:', activity.start);
-    console.log('Final activity end:', activity.end);
-    
-    try {
-        await this.db.saveActivity(activity);
-        await this.loadTripActivities();
-        await this.renderCalendar();
-    } catch (error) {
-        console.error('Failed to move activity to calendar:', error);
-        this.showToast('Failed to move activity', 'error');
-    }
-}
+} // End of TripPlannerApp class
 
 // Initialize app when script loads
 const app = new TripPlannerApp();
