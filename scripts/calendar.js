@@ -537,4 +537,52 @@ export class CalendarManager {
                 const gridStart = this.getWeekStart(monthStart);
                 const gridEnd = this.getWeekEnd(monthEnd);
                 
-                const mont
+                const monthDates = [];
+                const current = new Date(gridStart);
+                while (current <= gridEnd) {
+                    monthDates.push(new Date(current));
+                    current.setDate(current.getDate() + 1);
+                }
+                return monthDates;
+            default:
+                return [];
+        }
+    }
+    
+    // Calculate optimal activity positioning to avoid overlaps
+    calculateActivityPositions(activities) {
+        const positioned = [];
+        
+        activities.forEach(activity => {
+            if (!activity.start || !activity.end) return;
+            
+            const startTime = new Date(activity.start);
+            const endTime = new Date(activity.end);
+            
+            // Find column (to avoid overlaps)
+            let column = 0;
+            let maxColumn = 0;
+            
+            for (const existing of positioned) {
+                const existingStart = new Date(existing.activity.start);
+                const existingEnd = new Date(existing.activity.end);
+                
+                // Check for time overlap
+                if (startTime < existingEnd && endTime > existingStart) {
+                    if (existing.column >= column) {
+                        column = existing.column + 1;
+                    }
+                    maxColumn = Math.max(maxColumn, existing.column);
+                }
+            }
+            
+            positioned.push({
+                activity,
+                column,
+                totalColumns: Math.max(maxColumn + 1, column + 1)
+            });
+        });
+        
+        return positioned;
+    }
+}
