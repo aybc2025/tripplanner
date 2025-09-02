@@ -552,4 +552,436 @@ class TripPlannerApp {
     }
     
     async handleActivitySubmit(e) {
-        e.preventDefault()
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const activityData = Object.fromEntries(formData.entries());
+        
+        // Process tags
+        if (activityData.tags) {
+            activityData.tags = activityData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        } else {
+            activityData.tags = [];
+        }
+        
+        // Create activity object
+        const activity = {
+            id: this.currentEditingActivity ? this.currentEditingActivity.id : this.generateId(),
+            tripId: this.currentTrip.id,
+            title: activityData.title,
+            description: activityData.description || '',
+            locationUrl: activityData.locationUrl || '',
+            openingHours: activityData.openingHours || '',
+            start: activityData.start ? new Date(activityData.start).toISOString() : null,
+            end: activityData.end ? new Date(activityData.end).toISOString() : null,
+            tags: activityData.tags,
+            notes: activityData.notes || '',
+            links: [],
+            attachments: [],
+            source: this.currentEditingActivity ? this.currentEditingActivity.source : 'bank'
+        };
+        
+        try {
+            await this.db.saveActivity(activity);
+            
+            // Update local activities array
+            if (this.currentEditingActivity) {
+                const index = this.activities.findIndex(a => a.id === activity.id);
+                if (index !== -1) {
+                    this.activities[index] = activity;
+                }
+            } else {
+                this.activities.push(activity);
+            }
+            
+            // Refresh UI
+            await this.loadTripActivities();
+            await this.renderCalendar();
+            
+            this.hideActivityModal();
+            this.showToast('Activity saved', 'success');
+            
+        } catch (error) {
+            console.error('Failed to save activity:', error);
+            this.showToast('Failed to save activity', 'error');
+        }
+    }
+    
+    async deleteCurrentActivity() {
+        if (!this.currentEditingActivity) return;
+        
+        if (!confirm('Are you sure you want to delete this activity?')) {
+            return;
+        }
+        
+        try {
+            await this.db.deleteActivity(this.currentEditingActivity.id);
+            
+            // Remove from local arrays
+            this.activities = this.activities.filter(a => a.id !== this.currentEditingActivity.id);
+            this.bankActivities = this.bankActivities.filter(a => a.id !== this.currentEditingActivity.id);
+            
+            // Refresh UI
+            this.renderActivityBank();
+            await this.renderCalendar();
+            
+            this.hideActivityModal();
+            this.showToast('Activity deleted', 'success');
+            
+        } catch (error) {
+            console.error('Failed to delete activity:', error);
+            this.showToast('Failed to delete activity', 'error');
+        }
+    }
+    
+    // Menu and Actions
+    showMenuModal() {
+        if (this.elements['menu-modal']) {
+            this.elements['menu-modal'].classList.remove('hidden');
+        }
+    }
+    
+    hideMenuModal() {
+        this.hideModal('menu-modal');
+    }
+    
+    // Import/Export
+    importData() {
+        if (this.elements['file-input']) {
+            this.elements['file-input'].click();
+        }
+    }
+    
+    async handleFileImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                let data;
+                if (file.name.endsWith('.json')) {
+                    data = JSON.parse(event.target.result);
+                    await this.importJSON(data);
+                } else if (file.name.endsWith('.csv')) {
+                    await this.importCSV(event.target.result);
+                } else {
+                    this.showToast('Unsupported file format', 'error');
+                    return;
+                }
+                
+                this.showToast('Import completed', 'success');
+                await this.loadTripActivities();
+                await this.renderCalendar();
+                
+            } catch (error) {
+                console.error('Import failed:', error);
+                this.showToast('Import failed', 'error');
+            }
+        };
+        
+        reader.readAsText(file);
+        e.target.value = ''; // Reset file input
+    }
+    
+    async importJSON(data) {
+        // Import trip data
+        if (data.trip) {
+            data.trip.id = this.generateId();
+            await this.db.saveTrip(data.trip);
+        }
+        
+        // Import activities
+        if (data.activities && Array.isArray(data.activities)) {
+            const tripId = data.trip ? data.trip.id : this.currentTrip.id;
+            
+            for (const activity of data.activities) {
+                activity.id = this.generateId();
+                activity.tripId = tripId;
+                await this.db.saveActivity(activity);
+            }
+        }
+    }
+    
+    async importCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        if (lines.length < 2) {
+            throw new Error('CSV must have header row and at least one data row');
+        }
+        
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            const activity = {
+                id: this.generateId(),
+                tripId: this.currentTrip.id,
+                title: '',
+                description: '',
+                locationUrl: '',
+                openingHours: '',
+                start: null,
+                end: null,
+                tags: [],
+                notes: '',
+                links: [],
+                attachments: [],
+                source: 'bank'
+            };
+            
+            // Map CSV columns to activity fields
+            headers.forEach((header, index) => {
+                const value = values[index] || '';
+                
+                switch (header.toLowerCase()) {
+                    case 'title':
+                        activity.title = value;
+                        break;
+                    case 'description':
+                        activity.description = value;
+                        break;
+                    case 'locationurl':
+                    case 'location':
+                        activity.locationUrl = value;
+                        break;
+                    case 'openinghours':
+                    case 'hours':
+                        activity.openingHours = value;
+                        break;
+                    case 'starttime':
+                    case 'start':
+                        if (value) activity.start = new Date(value).toISOString();
+                        break;
+                    case 'endtime':
+                    case 'end':
+                        if (value) activity.end = new Date(value).toISOString();
+                        break;
+                    case 'tags':
+                        if (value) activity.tags = value.split(';').map(t => t.trim());
+                        break;
+                    case 'notes':
+                        activity.notes = value;
+                        break;
+                }
+            });
+            
+            if (activity.title) {
+                await this.db.saveActivity(activity);
+            }
+        }
+    }
+    
+    async exportData() {
+        if (!this.currentTrip) return;
+        
+        try {
+            const tripData = {
+                trip: this.currentTrip,
+                activities: this.activities,
+                exportedAt: new Date().toISOString()
+            };
+            
+            const jsonData = JSON.stringify(tripData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${this.currentTrip.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            URL.revokeObjectURL(url);
+            
+            this.showToast('Export completed', 'success');
+            
+        } catch (error) {
+            console.error('Export failed:', error);
+            this.showToast('Export failed', 'error');
+        }
+    }
+    
+    // Sharing
+    async shareTrip() {
+        if (!this.currentTrip) return;
+        
+        // Generate share token if not exists
+        if (!this.currentTrip.share.token) {
+            this.currentTrip.share.token = this.generateShareToken();
+            this.currentTrip.share.mode = 'view';
+            this.currentTrip.share.allowComments = true;
+            this.currentTrip.updatedAt = new Date().toISOString();
+            
+            await this.db.saveTrip(this.currentTrip);
+        }
+        
+        const shareUrl = `${window.location.origin}${window.location.pathname}?share=${this.currentTrip.share.token}`;
+        
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            this.showToast('Share link copied to clipboard', 'success');
+        } catch (error) {
+            // Fallback for browsers that don't support clipboard API
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            this.showToast('Share link copied', 'success');
+        }
+    }
+    
+    // Sync placeholder
+    async toggleSync() {
+        this.showToast('Cloud sync coming soon!', 'warning');
+    }
+    
+    // Utility Methods
+    hideModal(modalId) {
+        if (this.elements[modalId]) {
+            this.elements[modalId].classList.add('hidden');
+        }
+    }
+    
+    generateId() {
+        return 'id_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    }
+    
+    generateShareToken() {
+        return Array.from(crypto.getRandomValues(new Uint8Array(16)), 
+            b => b.toString(16).padStart(2, '0')).join('');
+    }
+    
+    showToast(message, type = 'info') {
+        if (!this.elements['toast-container']) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        
+        this.elements['toast-container'].appendChild(toast);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
+    
+    handleKeyboardShortcuts(e) {
+        // Only handle shortcuts when no modals are open and not in input fields
+        if (document.querySelector('.modal:not(.hidden)') || 
+            e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+        
+        switch (e.key.toLowerCase()) {
+            case 'd':
+                e.preventDefault();
+                this.switchView('day');
+                break;
+            case 'w':
+                e.preventDefault();
+                this.switchView('week');
+                break;
+            case 'm':
+                e.preventDefault();
+                this.switchView('month');
+                break;
+            case 'n':
+                e.preventDefault();
+                this.showActivityModal();
+                break;
+            case 't':
+                e.preventDefault();
+                this.goToToday();
+                break;
+            case 'arrowleft':
+                e.preventDefault();
+                this.navigatePrevious();
+                break;
+            case 'arrowright':
+                e.preventDefault();
+                this.navigateNext();
+                break;
+            case '/':
+                e.preventDefault();
+                // TODO: Implement search
+                break;
+            case 'escape':
+                // Close any open modal
+                const openModal = document.querySelector('.modal:not(.hidden)');
+                if (openModal) {
+                    openModal.classList.add('hidden');
+                }
+                break;
+        }
+    }
+    
+    // Public API for drag and drop
+    async moveActivityToBank(activityId) {
+        const activity = this.activities.find(a => a.id === activityId);
+        if (!activity) return;
+        
+        activity.source = 'bank';
+        activity.start = null;
+        activity.end = null;
+        
+        try {
+            await this.db.saveActivity(activity);
+            await this.loadTripActivities();
+            await this.renderCalendar();
+        } catch (error) {
+            console.error('Failed to move activity to bank:', error);
+            this.showToast('Failed to move activity', 'error');
+        }
+    }
+    
+    async moveActivityToCalendar(activityId, date, time = null) {
+        const activity = this.activities.find(a => a.id === activityId);
+        if (!activity) return;
+        
+        activity.source = 'calendar';
+        
+        if (time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            const startDate = new Date(date);
+            startDate.setHours(hours, minutes, 0, 0);
+            
+            const endDate = new Date(startDate);
+            endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
+            
+            activity.start = startDate.toISOString();
+            activity.end = endDate.toISOString();
+        } else {
+            // All day event
+            const startDate = new Date(date);
+            startDate.setHours(9, 0, 0, 0); // Default 9 AM
+            const endDate = new Date(date);
+            endDate.setHours(10, 0, 0, 0); // Default 1 hour
+            
+            activity.start = startDate.toISOString();
+            activity.end = endDate.toISOString();
+        }
+        
+        try {
+            await this.db.saveActivity(activity);
+            await this.loadTripActivities();
+            await this.renderCalendar();
+        } catch (error) {
+            console.error('Failed to move activity to calendar:', error);
+            this.showToast('Failed to move activity', 'error');
+        }
+    }
+}
+
+// Initialize app when script loads
+const app = new TripPlannerApp();
+
+// Export for potential use by other modules
+export { TripPlannerApp };
