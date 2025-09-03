@@ -540,30 +540,41 @@ setupCalendarActivityDraggers() {
             }
         });
         
-        // Handle datetime fields - FIX timezone issue
-        if (activity.start) {
-            const startInput = document.getElementById('activity-start');
-            if (startInput) {
-                // Convert to local time for datetime-local input
-                const startDate = new Date(activity.start);
-                const localStart = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000);
-                const localStartString = localStart.toISOString().slice(0, 16);
-                console.log(`Setting start time: ${activity.start} -> ${localStartString}`);
-                startInput.value = localStartString;
-            }
-        }
+        // Handle datetime fields - FIX timezone conversion
+if (activity.start) {
+    const startInput = document.getElementById('activity-start');
+    if (startInput) {
+        // Convert UTC time back to local datetime-local format
+        const startDate = new Date(activity.start);
+        // Format: YYYY-MM-DDTHH:MM
+        const year = startDate.getFullYear();
+        const month = String(startDate.getMonth() + 1).padStart(2, '0');
+        const day = String(startDate.getDate()).padStart(2, '0');
+        const hours = String(startDate.getHours()).padStart(2, '0');
+        const minutes = String(startDate.getMinutes()).padStart(2, '0');
+        const localStartString = `${year}-${month}-${day}T${hours}:${minutes}`;
         
-        if (activity.end) {
-            const endInput = document.getElementById('activity-end');
-            if (endInput) {
-                // Convert to local time for datetime-local input
-                const endDate = new Date(activity.end);
-                const localEnd = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
-                const localEndString = localEnd.toISOString().slice(0, 16);
-                console.log(`Setting end time: ${activity.end} -> ${localEndString}`);
-                endInput.value = localEndString;
-            }
-        }
+        console.log(`Setting start time: ${activity.start} -> ${localStartString}`);
+        startInput.value = localStartString;
+    }
+}
+
+if (activity.end) {
+    const endInput = document.getElementById('activity-end');
+    if (endInput) {
+        // Convert UTC time back to local datetime-local format
+        const endDate = new Date(activity.end);
+        const year = endDate.getFullYear();
+        const month = String(endDate.getMonth() + 1).padStart(2, '0');
+        const day = String(endDate.getDate()).padStart(2, '0');
+        const hours = String(endDate.getHours()).padStart(2, '0');
+        const minutes = String(endDate.getMinutes()).padStart(2, '0');
+        const localEndString = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        console.log(`Setting end time: ${activity.end} -> ${localEndString}`);
+        endInput.value = localEndString;
+    }
+}
         
         // Handle tags
         if (activity.tags && Array.isArray(activity.tags)) {
@@ -610,8 +621,8 @@ setupCalendarActivityDraggers() {
         tripId: this.currentTrip.id,
         title: activityData.title || '',
         description: activityData.description || '',
-        locationUrl: activityData.location || '',  // Note: form field is 'location'
-        openingHours: activityData.hours || '',    // Note: form field is 'hours'
+        locationUrl: activityData.locationUrl || '',  // FIXED: use correct field name
+        openingHours: activityData.openingHours || '',    // FIXED: use correct field name
         start: null,
         end: null,
         tags: activityData.tags,
@@ -621,18 +632,23 @@ setupCalendarActivityDraggers() {
         source: 'bank' // Default to bank, will update below
     };
     
-    // Handle datetime fields - FIX timezone conversion
-    if (activityData.start) {
-        // The datetime-local value is in local time, convert to UTC for storage
-        const localDate = new Date(activityData.start);
-        activity.start = localDate.toISOString();
+    // Handle datetime fields - FIX timezone conversion properly
+if (activityData.start) {
+    // datetime-local gives us a string like "2025-10-14T09:30"
+    // We need to treat this as local time, not convert it
+    const localDateStr = activityData.start;
+    if (localDateStr.length === 16) { // "YYYY-MM-DDTHH:MM" format
+        activity.start = new Date(localDateStr).toISOString();
     }
-    
-    if (activityData.end) {
-        // The datetime-local value is in local time, convert to UTC for storage
-        const localDate = new Date(activityData.end);
-        activity.end = localDate.toISOString();
+}
+
+if (activityData.end) {
+    // datetime-local gives us a string like "2025-10-14T10:30"
+    const localDateStr = activityData.end;
+    if (localDateStr.length === 16) { // "YYYY-MM-DDTHH:MM" format
+        activity.end = new Date(localDateStr).toISOString();
     }
+}
     
     // Smart source detection: if has date/time → calendar, otherwise → bank
     if (this.currentEditingActivity) {
