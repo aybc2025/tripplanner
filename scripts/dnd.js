@@ -344,8 +344,10 @@ setupAllCalendarActivityDraggers() {
         const dropTarget = this.getDropTargetAtPoint(touch.clientX, touch.clientY);
         
         if (dropTarget) {
-            // Simulate drop event
+            // Simulate drop event with proper structure
             const dropEvent = new Event('drop');
+            dropEvent.preventDefault = () => {};
+            dropEvent.currentTarget = dropTarget;
             dropEvent.dataTransfer = {
                 getData: () => this.draggedActivity.id
             };
