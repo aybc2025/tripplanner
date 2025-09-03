@@ -707,6 +707,23 @@ setupCalendarActivityDraggers() {
         // Import trip data
         if (data.trip) {
             data.trip.id = this.generateId();
+            
+            // Handle sharing settings to avoid shareToken conflicts
+            if (data.trip.share && data.trip.share.mode !== 'private') {
+                // Generate new shareToken if trip was shared
+                data.trip.share.token = this.generateShareToken();
+            } else {
+                // Reset to private if wasn't shared
+                data.trip.share = {
+                    mode: 'private',
+                    token: null,
+                    allowComments: false
+                };
+            }
+            
+            // Update timestamps
+            data.trip.updatedAt = new Date().toISOString();
+            
             await this.db.saveTrip(data.trip);
         }
         
@@ -717,6 +734,7 @@ setupCalendarActivityDraggers() {
             for (const activity of data.activities) {
                 activity.id = this.generateId();
                 activity.tripId = tripId;
+                activity.updatedAt = new Date().toISOString();
                 await this.db.saveActivity(activity);
             }
         }
