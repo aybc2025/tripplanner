@@ -258,97 +258,117 @@ export class CalendarManager {
     }
     
     async renderMonthView(activities) {
-        const monthContainer = document.getElementById('month-grid');
-        if (!monthContainer) return;
+    const monthContainer = document.getElementById('month-grid');
+    if (!monthContainer) return;
+    
+    monthContainer.innerHTML = '';
+    
+    const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+    const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+    
+    // Calculate start and end of month grid (including partial weeks)
+    const gridStart = this.getWeekStart(firstDay);
+    const gridEnd = this.getWeekEnd(lastDay);
+    
+    const current = new Date(gridStart);
+    const today = new Date();
+    
+    while (current <= gridEnd) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'month-day drop-zone';
+        dayElement.dataset.date = this.formatDateForStorage(current);
         
-        monthContainer.innerHTML = '';
+        // Check if day is in current month
+        if (current.getMonth() !== this.currentDate.getMonth()) {
+            dayElement.classList.add('other-month');
+        }
         
-        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
-        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+        // Highlight today
+        if (this.isSameDate(current, today)) {
+            dayElement.classList.add('today');
+        }
         
-        // Calculate start and end of month grid (including partial weeks)
-        const gridStart = this.getWeekStart(firstDay);
-        const gridEnd = this.getWeekEnd(lastDay);
+        // Day number
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'month-day-number';
+        dayNumber.textContent = current.getDate();
+        dayElement.appendChild(dayNumber);
         
-        const current = new Date(gridStart);
-        const today = new Date();
+        // Activities container
+        const activitiesContainer = document.createElement('div');
+        activitiesContainer.className = 'month-activities';
         
-        while (current <= gridEnd) {
-            const dayElement = document.createElement('div');
-            dayElement.className = 'month-day drop-zone';
-            dayElement.dataset.date = current.toISOString().split('T')[0];
+        // Add activities for this day
+        const dayActivities = this.getActivitiesForDate(activities, current);
+        dayActivities.slice(0, 3).forEach(activity => { // Limit to 3 activities visible
+            const activityElement = document.createElement('div');
+            activityElement.className = 'month-activity';
+            activityElement.draggable = true; // ADDED
+            activityElement.textContent = activity.title;
+            activityElement.dataset.activityId = activity.id;
             
-            // Check if day is in current month
-            if (current.getMonth() !== this.currentDate.getMonth()) {
-                dayElement.classList.add('other-month');
-            }
-            
-            // Highlight today
-            if (this.isSameDate(current, today)) {
-                dayElement.classList.add('today');
-            }
-            
-            // Day number
-            const dayNumber = document.createElement('div');
-            dayNumber.className = 'month-day-number';
-            dayNumber.textContent = current.getDate();
-            dayElement.appendChild(dayNumber);
-            
-            // Activities container
-            const activitiesContainer = document.createElement('div');
-            activitiesContainer.className = 'month-activities';
-            
-            // Add activities for this day
-            const dayActivities = this.getActivitiesForDate(activities, current);
-            dayActivities.slice(0, 3).forEach(activity => { // Limit to 3 activities visible
-                const activityElement = document.createElement('div');
-                activityElement.className = 'month-activity';
-                activityElement.textContent = activity.title;
-                activityElement.dataset.activityId = activity.id;
-                
-                // Add click handler
-                activityElement.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    // Trigger activity details modal (will be handled by app)
-                    const event = new CustomEvent('activityClick', { detail: { activity } });
-                    document.dispatchEvent(event);
+            // Add click handler - IMPROVED
+            activityElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const event = new CustomEvent('activityClick', { 
+                    detail: { activity },
+                    bubbles: true
                 });
-                
-                activitiesContainer.appendChild(activityElement);
+                document.dispatchEvent(event);
             });
             
-            if (dayActivities.length > 3) {
-                const moreElement = document.createElement('div');
-                moreElement.className = 'month-activity';
-                moreElement.textContent = `+${dayActivities.length - 3} more`;
-                moreElement.style.opacity = '0.7';
-                activitiesContainer.appendChild(moreElement);
-            }
-            
-            dayElement.appendChild(activitiesContainer);
-            monthContainer.appendChild(dayElement);
-            
-            // Move to next day
-            current.setDate(current.getDate() + 1);
-        }
-    }
-    
-    createCalendarActivityElement(activity) {
-        const element = document.createElement('div');
-        element.className = 'calendar-activity';
-        element.draggable = true;
-        element.dataset.activityId = activity.id;
-        element.textContent = activity.title;
-        
-        // Add click handler for details
-        element.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const event = new CustomEvent('activityClick', { detail: { activity } });
-            document.dispatchEvent(event);
+            activitiesContainer.appendChild(activityElement);
         });
         
-        return element;
+        if (dayActivities.length > 3) {
+            const moreElement = document.createElement('div');
+            moreElement.className = 'month-activity more-activities';
+            moreElement.textContent = `+${dayActivities.length - 3} more`;
+            moreElement.style.opacity = '0.7';
+            
+            // Add click handler for "more" element too
+            moreElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Could show a popup with all activities for this day
+                console.log(`Show all ${dayActivities.length} activities for ${current.toDateString()}`);
+            });
+            
+            activitiesContainer.appendChild(moreElement);
+        }
+        
+        dayElement.appendChild(activitiesContainer);
+        monthContainer.appendChild(dayElement);
+        
+        // Move to next day
+        current.setDate(current.getDate() + 1);
     }
+}
+    
+    createCalendarActivityElement(activity) {
+    const element = document.createElement('div');
+    element.className = 'calendar-activity';
+    element.draggable = true;
+    element.dataset.activityId = activity.id;
+    element.textContent = activity.title;
+    
+    // Add click handler for details - IMPROVED
+    element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        // Don't open if we're dragging
+        if (!element.classList.contains('dragging')) {
+            const event = new CustomEvent('activityClick', { 
+                detail: { activity },
+                bubbles: true
+            });
+            document.dispatchEvent(event);
+        }
+    });
+    
+    return element;
+}
     
     positionDayActivity(element, activity) {
         const startTime = new Date(activity.start);
