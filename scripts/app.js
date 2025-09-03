@@ -513,118 +513,169 @@ setupCalendarActivityDraggers() {
     }
     
     populateActivityForm(activity) {
-        const form = this.elements['activity-form'];
-        if (!form) return;
-        
-        // Clear form
-        form.reset();
-        
-        if (activity) {
-            // Populate with activity data
-            const fields = [
-                'title', 'description', 'locationUrl', 'openingHours', 'notes'
-            ];
-            
-            fields.forEach(field => {
-                const input = document.getElementById(`activity-${field}`);
-                if (input && activity[field]) {
-                    input.value = activity[field];
-                }
-            });
-            
-            // Handle datetime fields
-            if (activity.start) {
-                const startInput = document.getElementById('activity-start');
-                if (startInput) {
-                    startInput.value = new Date(activity.start).toISOString().slice(0, 16);
-                }
-            }
-            
-            if (activity.end) {
-                const endInput = document.getElementById('activity-end');
-                if (endInput) {
-                    endInput.value = new Date(activity.end).toISOString().slice(0, 16);
-                }
-            }
-            
-            // Handle tags
-            if (activity.tags) {
-                const tagsInput = document.getElementById('activity-tags');
-                if (tagsInput) {
-                    tagsInput.value = activity.tags.join(', ');
-                }
-            }
-            
-            // Show delete button for existing activities
-            if (this.elements['delete-activity-btn']) {
-                this.elements['delete-activity-btn'].style.display = 'block';
-            }
-        } else {
-            // Hide delete button for new activities
-            if (this.elements['delete-activity-btn']) {
-                this.elements['delete-activity-btn'].style.display = 'none';
-            }
-        }
-    }
+    const form = this.elements['activity-form'];
+    if (!form) return;
     
-    async handleActivitySubmit(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        const activityData = Object.fromEntries(formData.entries());
-        
-        // Process tags
-        if (activityData.tags) {
-            activityData.tags = activityData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-        } else {
-            activityData.tags = [];
-        }
-        
-        // Create activity object
-        const activity = {
-            id: this.currentEditingActivity ? this.currentEditingActivity.id : this.generateId(),
-            tripId: this.currentTrip.id,
-            title: activityData.title,
-            description: activityData.description || '',
-            locationUrl: activityData.locationUrl || '',
-            openingHours: activityData.openingHours || '',
-            start: activityData.start ? new Date(activityData.start).toISOString() : null,
-            end: activityData.end ? new Date(activityData.end).toISOString() : null,
-            tags: activityData.tags,
-            notes: activityData.notes || '',
-            links: [],
-            attachments: [],
-            // Smart source detection: if has date/time → calendar, otherwise → bank
-            source: this.currentEditingActivity ? 
-                this.currentEditingActivity.source : 
-                (activityData.start && activityData.end ? 'calendar' : 'bank')
+    // Clear form
+    form.reset();
+    
+    // Debug logging
+    console.log('Populating form with activity:', activity);
+    
+    if (activity) {
+        // Populate with activity data - Fix field name mapping
+        const fieldMap = {
+            'title': 'activity-title',
+            'description': 'activity-description', 
+            'locationUrl': 'activity-location',  // Fix: HTML field is 'activity-location'
+            'openingHours': 'activity-hours',    // Fix: HTML field is 'activity-hours'
+            'notes': 'activity-notes'
         };
         
-        try {
-            await this.db.saveActivity(activity);
-            
-            // Update local activities array
-            if (this.currentEditingActivity) {
-                const index = this.activities.findIndex(a => a.id === activity.id);
-                if (index !== -1) {
-                    this.activities[index] = activity;
-                }
+        Object.entries(fieldMap).forEach(([activityField, inputId]) => {
+            const input = document.getElementById(inputId);
+            if (input && activity[activityField] !== undefined && activity[activityField] !== null) {
+                console.log(`Setting ${inputId} = ${activity[activityField]}`);
+                input.value = activity[activityField];
+            }
+        });
+        
+        // Handle datetime fields - FIX timezone issue
+        if (activity.start) {
+            const startInput = document.getElementById('activity-start');
+            if (startInput) {
+                // Convert to local time for datetime-local input
+                const startDate = new Date(activity.start);
+                const localStart = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000);
+                const localStartString = localStart.toISOString().slice(0, 16);
+                console.log(`Setting start time: ${activity.start} -> ${localStartString}`);
+                startInput.value = localStartString;
+            }
+        }
+        
+        if (activity.end) {
+            const endInput = document.getElementById('activity-end');
+            if (endInput) {
+                // Convert to local time for datetime-local input
+                const endDate = new Date(activity.end);
+                const localEnd = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
+                const localEndString = localEnd.toISOString().slice(0, 16);
+                console.log(`Setting end time: ${activity.end} -> ${localEndString}`);
+                endInput.value = localEndString;
+            }
+        }
+        
+        // Handle tags
+        if (activity.tags && Array.isArray(activity.tags)) {
+            const tagsInput = document.getElementById('activity-tags');
+            if (tagsInput) {
+                const tagsString = activity.tags.join(', ');
+                console.log(`Setting tags: ${tagsString}`);
+                tagsInput.value = tagsString;
+            }
+        }
+        
+        // Show delete button for existing activities
+        if (this.elements['delete-activity-btn']) {
+            this.elements['delete-activity-btn'].style.display = 'block';
+        }
+    } else {
+        console.log('Creating new activity - form cleared');
+        // Hide delete button for new activities
+        if (this.elements['delete-activity-btn']) {
+            this.elements['delete-activity-btn'].style.display = 'none';
+        }
+    }
+}
+    
+   async handleActivitySubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const activityData = Object.fromEntries(formData.entries());
+    
+    // Debug logging to see what we're getting from the form
+    console.log('Form data received:', activityData);
+    
+    // Process tags
+    if (activityData.tags) {
+        activityData.tags = activityData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+    } else {
+        activityData.tags = [];
+    }
+    
+    // Create activity object
+    const activity = {
+        id: this.currentEditingActivity ? this.currentEditingActivity.id : this.generateId(),
+        tripId: this.currentTrip.id,
+        title: activityData.title || '',
+        description: activityData.description || '',
+        locationUrl: activityData.location || '',  // Note: form field is 'location'
+        openingHours: activityData.hours || '',    // Note: form field is 'hours'
+        start: null,
+        end: null,
+        tags: activityData.tags,
+        notes: activityData.notes || '',
+        links: [],
+        attachments: [],
+        source: 'bank' // Default to bank, will update below
+    };
+    
+    // Handle datetime fields - FIX timezone conversion
+    if (activityData.start) {
+        // The datetime-local value is in local time, convert to UTC for storage
+        const localDate = new Date(activityData.start);
+        activity.start = localDate.toISOString();
+    }
+    
+    if (activityData.end) {
+        // The datetime-local value is in local time, convert to UTC for storage
+        const localDate = new Date(activityData.end);
+        activity.end = localDate.toISOString();
+    }
+    
+    // Smart source detection: if has date/time → calendar, otherwise → bank
+    if (this.currentEditingActivity) {
+        // Keep existing source for edited activities
+        activity.source = this.currentEditingActivity.source;
+    } else {
+        // For new activities: if has both start and end time → calendar, otherwise → bank
+        activity.source = (activity.start && activity.end) ? 'calendar' : 'bank';
+    }
+    
+    // Debug logging to see final activity object
+    console.log('Final activity object:', activity);
+    
+    try {
+        await this.db.saveActivity(activity);
+        
+        // Update local activities array
+        if (this.currentEditingActivity) {
+            const index = this.activities.findIndex(a => a.id === activity.id);
+            if (index !== -1) {
+                this.activities[index] = activity;
             } else {
                 this.activities.push(activity);
             }
-            
-            // Refresh UI
-            await this.loadTripActivities();
-            await this.renderCalendar();
-            
-            this.hideActivityModal();
-            this.showToast('Activity saved', 'success');
-            
-        } catch (error) {
-            console.error('Failed to save activity:', error);
-            this.showToast('Failed to save activity', 'error');
+        } else {
+            this.activities.push(activity);
         }
+        
+        // Update bankActivities array if needed
+        this.bankActivities = this.activities.filter(a => a.source === 'bank');
+        
+        // Refresh UI
+        this.renderActivityBank();
+        await this.renderCalendar();
+        
+        this.hideActivityModal();
+        this.showToast('Activity saved successfully', 'success');
+        
+    } catch (error) {
+        console.error('Failed to save activity:', error);
+        this.showToast('Failed to save activity', 'error');
     }
+}
     
     async deleteCurrentActivity() {
         if (!this.currentEditingActivity) return;
