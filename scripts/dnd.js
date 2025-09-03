@@ -218,16 +218,18 @@ setupAllCalendarActivityDraggers() {
     }
     
     handleDragEnd(e) {
-        // Clean up
+    // Clean up
+    if (e.target && e.target.classList) {
         e.target.classList.remove('dragging');
-        this.clearDropZoneHighlights();
-        
-        this.draggedElement = null;
-        this.draggedActivity = null;
-        this.isDragging = false;
-        
-        console.log('Drag ended');
     }
+    this.clearDropZoneHighlights();
+    
+    this.draggedElement = null;
+    this.draggedActivity = null;
+    this.isDragging = false;
+    
+    console.log('Drag ended');
+}
     
     handleDragOver(e) {
         if (!this.isDragging) return;
@@ -340,39 +342,44 @@ setupAllCalendarActivityDraggers() {
     }
     
     endTouchDrag(touch) {
-        // Find drop target
-        const dropTarget = this.getDropTargetAtPoint(touch.clientX, touch.clientY);
+    // Find drop target
+    const dropTarget = this.getDropTargetAtPoint(touch.clientX, touch.clientY);
+    
+    if (dropTarget && dropTarget._dropHandler && this.draggedActivity) {
+        // Simulate drop event with proper structure
+        const dropEvent = new Event('drop');
+        dropEvent.preventDefault = () => {};
+        dropEvent.currentTarget = dropTarget;
+        dropEvent.dataTransfer = {
+            getData: () => this.draggedActivity.id
+        };
         
-        if (dropTarget) {
-            // Simulate drop event with proper structure
-            const dropEvent = new Event('drop');
-            dropEvent.preventDefault = () => {};
-            dropEvent.currentTarget = dropTarget;
-            dropEvent.dataTransfer = {
-                getData: () => this.draggedActivity.id
-            };
-            
-            if (dropTarget._dropHandler) {
-                dropTarget._dropHandler(dropEvent);
+        try {
+            dropTarget._dropHandler(dropEvent);
+        } catch (error) {
+            console.error('Touch drop handler failed:', error);
+            if (this.app) {
+                this.app.showToast('Failed to drop activity', 'error');
             }
         }
-        
-        // Clean up
-        if (this.dragPreview && this.dragPreview.parentNode) {
-            document.body.removeChild(this.dragPreview);
-            this.dragPreview = null;
-        }
-        
-        if (this.draggedElement) {
-            this.draggedElement.classList.remove('dragging');
-        }
-        
-        this.clearDropZoneHighlights();
-        this.draggedElement = null;
-        this.draggedActivity = null;
-        
-        console.log('Touch drag ended');
     }
+    
+    // Clean up
+    if (this.dragPreview && this.dragPreview.parentNode) {
+        document.body.removeChild(this.dragPreview);
+        this.dragPreview = null;
+    }
+    
+    if (this.draggedElement && this.draggedElement.classList) {
+        this.draggedElement.classList.remove('dragging');
+    }
+    
+    this.clearDropZoneHighlights();
+    this.draggedElement = null;
+    this.draggedActivity = null;
+    
+    console.log('Touch drag ended');
+}
     
     highlightDropZoneAtPoint(x, y) {
         // Clear existing highlights
@@ -426,6 +433,11 @@ setupAllCalendarActivityDraggers() {
     if (!activityId || !this.app) return;
     
     const dropTarget = e.currentTarget;
+    if (!dropTarget) {
+        console.warn('No drop target found');
+        return;
+    }
+    
     const date = dropTarget.dataset.date;
     const time = dropTarget.dataset.time;
     
@@ -447,28 +459,38 @@ setupAllCalendarActivityDraggers() {
     }
     
     // Clean up visual feedback
-    dropTarget.classList.remove('drag-over');
+    if (dropTarget && dropTarget.classList) {
+        dropTarget.classList.remove('drag-over');
+    }
 }
     
     async handleBankDrop(e) {
-        e.preventDefault();
-        
-        const activityId = e.dataTransfer.getData('text/plain');
-        if (!activityId || !this.app) return;
-        
-        console.log(`Dropping activity ${activityId} back to bank`);
-        
-        try {
-            await this.app.moveActivityToBank(activityId);
-            this.app.showToast('Activity moved to bank', 'success');
-        } catch (error) {
-            console.error('Failed to drop activity on bank:', error);
-            this.app.showToast('Failed to move activity', 'error');
-        }
-        
-        // Clean up visual feedback
-        e.currentTarget.classList.remove('drag-over');
+    e.preventDefault();
+    
+    const activityId = e.dataTransfer.getData('text/plain');
+    if (!activityId || !this.app) return;
+    
+    const dropTarget = e.currentTarget;
+    if (!dropTarget) {
+        console.warn('No drop target found for bank drop');
+        return;
     }
+    
+    console.log(`Dropping activity ${activityId} back to bank`);
+    
+    try {
+        await this.app.moveActivityToBank(activityId);
+        this.app.showToast('Activity moved to bank', 'success');
+    } catch (error) {
+        console.error('Failed to drop activity on bank:', error);
+        this.app.showToast('Failed to move activity', 'error');
+    }
+    
+    // Clean up visual feedback
+    if (dropTarget && dropTarget.classList) {
+        dropTarget.classList.remove('drag-over');
+    }
+}
     
     // Utility methods
     getActivityFromElement(element) {
@@ -479,11 +501,13 @@ setupAllCalendarActivityDraggers() {
     }
     
     clearDropZoneHighlights() {
-        const highlightedZones = document.querySelectorAll('.drag-over');
-        highlightedZones.forEach(zone => {
+    const highlightedZones = document.querySelectorAll('.drag-over');
+    highlightedZones.forEach(zone => {
+        if (zone && zone.classList) {
             zone.classList.remove('drag-over');
-        });
-    }
+        }
+    });
+}
     
     // Advanced drag features
     enableSortableWithinBank() {
