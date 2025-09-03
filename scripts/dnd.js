@@ -33,36 +33,45 @@ export class DragDropManager {
     }
     
     setupCalendarDropZones() {
-        // Remove existing drop zone listeners safely
-        this.cleanupDropZones();
-        
-        // Setup new drop zones based on current view
-        const view = this.app.currentView;
-        
-        switch (view) {
-            case 'day':
-                this.setupDayDropZones();
-                break;
-            case 'week':
-                this.setupWeekDropZones();
-                break;
-            case 'month':
-                this.setupMonthDropZones();
-                break;
-        }
-        
-        // Setup calendar activity draggers
-        const calendarActivities = document.querySelectorAll('.calendar-activity');
-        calendarActivities.forEach(element => {
-            this.setupDragElement(element);
-        });
-        
-        // Setup bank as drop zone for returning activities
-        const bankContainer = document.getElementById('bank-activities');
-        if (bankContainer) {
-            this.setupDropZone(bankContainer, this.handleBankDrop.bind(this));
-        }
+    // Remove existing drop zone listeners safely
+    this.cleanupDropZones();
+    
+    // Setup new drop zones based on current view
+    const view = this.app.currentView;
+    
+    switch (view) {
+        case 'day':
+            this.setupDayDropZones();
+            break;
+        case 'week':
+            this.setupWeekDropZones();
+            break;
+        case 'month':
+            this.setupMonthDropZones();
+            break;
     }
+    
+    // Setup calendar activity draggers - IMPROVED VERSION
+    this.setupAllCalendarActivityDraggers();
+    
+    // Setup bank as drop zone for returning activities
+    const bankContainer = document.getElementById('bank-activities');
+    if (bankContainer) {
+        this.setupDropZone(bankContainer, this.handleBankDrop.bind(this));
+    }
+}
+
+// הוסף פונקציה חדשה:
+setupAllCalendarActivityDraggers() {
+    const calendarActivities = document.querySelectorAll('.calendar-activity, .month-activity');
+    calendarActivities.forEach(element => {
+        // Remove existing listeners to avoid duplicates
+        if (element._dragHandlers) {
+            this.removeDragListeners(element);
+        }
+        this.setupDragElement(element);
+    });
+}
     
     cleanupDropZones() {
         // Safely remove event listeners from existing drop zones
@@ -147,30 +156,45 @@ export class DragDropManager {
     }
     
     removeDragListeners(element) {
-        if (!element || !element.parentNode) return;
-        
-        // Clean up drag element listeners
-        if (element._dragHandlers) {
-            element.removeEventListener('dragstart', element._dragHandlers.dragStart);
-            element.removeEventListener('dragend', element._dragHandlers.dragEnd);
-            element.removeEventListener('touchstart', element._dragHandlers.touchStart);
-            element.removeEventListener('touchmove', element._dragHandlers.touchMove);
-            element.removeEventListener('touchend', element._dragHandlers.touchEnd);
-            delete element._dragHandlers;
-        }
-        
-        // Clean up drop zone listeners
-        element.removeEventListener('dragover', this.boundHandlers.dragOver);
-        element.removeEventListener('dragenter', this.boundHandlers.dragEnter);
-        element.removeEventListener('dragleave', this.boundHandlers.dragLeave);
-        
-        if (element._dropHandler) {
-            element.removeEventListener('drop', element._dropHandler);
-            delete element._dropHandler;
-        }
-        
-        element.classList.remove('drop-zone');
+    if (!element || !element.parentNode) return;
+    
+    // Clean up drag element listeners
+    if (element._dragHandlers) {
+        Object.keys(element._dragHandlers).forEach(eventType => {
+            const handler = element._dragHandlers[eventType];
+            switch(eventType) {
+                case 'dragStart':
+                    element.removeEventListener('dragstart', handler);
+                    break;
+                case 'dragEnd':
+                    element.removeEventListener('dragend', handler);
+                    break;
+                case 'touchStart':
+                    element.removeEventListener('touchstart', handler);
+                    break;
+                case 'touchMove':
+                    element.removeEventListener('touchmove', handler);
+                    break;
+                case 'touchEnd':
+                    element.removeEventListener('touchend', handler);
+                    break;
+            }
+        });
+        delete element._dragHandlers;
     }
+    
+    // Clean up drop zone listeners
+    element.removeEventListener('dragover', this.boundHandlers.dragOver);
+    element.removeEventListener('dragenter', this.boundHandlers.dragEnter);
+    element.removeEventListener('dragleave', this.boundHandlers.dragLeave);
+    
+    if (element._dropHandler) {
+        element.removeEventListener('drop', element._dropHandler);
+        delete element._dropHandler;
+    }
+    
+    element.classList.remove('drop-zone');
+}
     
     // Mouse drag handlers
     handleDragStart(e) {
