@@ -82,6 +82,12 @@ class TripPlannerApp {
     }
     
     setupEventListeners() {
+         // Custom event listener for activity clicks (ADD THIS)
+    document.addEventListener('activityClick', (e) => {
+        const activity = e.detail.activity;
+        this.showActivityModal(activity);
+    });
+        
         // View switcher
         const viewButtons = ['day-view', 'week-view', 'month-view'];
         viewButtons.forEach(id => {
@@ -282,25 +288,35 @@ class TripPlannerApp {
     }
     
     async renderCalendar() {
-        try {
-            // Update calendar title
-            const title = this.calendar.getDisplayTitle();
-            if (this.elements['calendar-title']) {
-                this.elements['calendar-title'].textContent = title;
-            }
-            
-            // Render the current view
-            const calendarActivities = this.activities.filter(activity => activity.source === 'calendar');
-            await this.calendar.render(calendarActivities);
-            
-            // Setup drag and drop for the rendered activities
-            this.dragDrop.setupCalendarDropZones();
-            
-        } catch (error) {
-            console.error('Failed to render calendar:', error);
-            this.showToast('Failed to update calendar', 'error');
+    try {
+        // Update calendar title
+        const title = this.calendar.getDisplayTitle();
+        if (this.elements['calendar-title']) {
+            this.elements['calendar-title'].textContent = title;
         }
+        
+        // Render the current view
+        const calendarActivities = this.activities.filter(activity => activity.source === 'calendar');
+        await this.calendar.render(calendarActivities);
+        
+        // Setup drag and drop for ALL rendered activities (IMPORTANT FIX)
+        this.dragDrop.setupCalendarDropZones();
+        this.setupCalendarActivityDraggers(); // NEW LINE
+        
+    } catch (error) {
+        console.error('Failed to render calendar:', error);
+        this.showToast('Failed to update calendar', 'error');
     }
+}
+
+// הוסף פונקציה חדשה:
+setupCalendarActivityDraggers() {
+    // Setup draggers for all calendar activities
+    const calendarActivities = document.querySelectorAll('.calendar-activity');
+    calendarActivities.forEach(element => {
+        this.dragDrop.setupDragElement(element);
+    });
+}
     
     // Activity Bank Management
     renderActivityBank() {
