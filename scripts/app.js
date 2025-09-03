@@ -578,7 +578,10 @@ class TripPlannerApp {
             notes: activityData.notes || '',
             links: [],
             attachments: [],
-            source: this.currentEditingActivity ? this.currentEditingActivity.source : 'bank'
+            // Smart source detection: if has date/time → calendar, otherwise → bank
+            source: this.currentEditingActivity ? 
+                this.currentEditingActivity.source : 
+                (activityData.start && activityData.end ? 'calendar' : 'bank')
         };
         
         try {
