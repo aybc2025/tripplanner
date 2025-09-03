@@ -279,7 +279,7 @@ html, body {
     border-radius: var(--border-radius);
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-sm);
-    cursor: move;
+    cursor: move; /* שינוי מ-move ל-pointer כשלא גוררים */
     transition: all 0.2s;
     user-select: none;
 }
@@ -287,11 +287,23 @@ html, body {
 .activity-item:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
+    border-color: var(--primary-color); /* הוספה */
+}
+
+.activity-item:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    border-color: var(--primary-color); /* הוספה */
+}
+
+.activity-item:not(.dragging) {
+    cursor: pointer; /* הוספה */
 }
 
 .activity-item.dragging {
     opacity: 0.5;
     transform: rotate(5deg);
+    cursor: grabbing; /* הוספה */
 }
 
 .activity-title {
@@ -556,7 +568,7 @@ html, body {
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--border-radius-sm);
     font-size: var(--font-size-sm);
-    cursor: pointer;
+    cursor: pointer; /* הוספה */
     user-select: none;
     z-index: 10;
     box-shadow: var(--shadow-sm);
@@ -566,12 +578,43 @@ html, body {
 .calendar-activity:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
+    background: var(--primary-hover); /* הוספה */
 }
 
 .calendar-activity.dragging {
     opacity: 0.7;
     transform: rotate(2deg) scale(1.05);
     z-index: 1000;
+}
+
+.month-activity {
+    background: var(--primary-color);
+    color: white;
+    padding: 2px 4px;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-sm);
+    margin-bottom: 2px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s; /* הוספה */
+    user-select: none; /* הוספה */
+}
+
+/* הוסף הגדרות חדשות */
+.month-activity:hover {
+    background: var(--primary-hover);
+    transform: scale(1.02);
+}
+
+.month-activity.more-activities {
+    cursor: pointer;
+    font-style: italic;
+}
+
+.month-activity.more-activities:hover {
+    background: var(--text-secondary);
 }
 
 /* Drop Zones */
@@ -581,15 +624,23 @@ html, body {
 
 .drop-zone.drag-over {
     background: rgba(25, 118, 210, 0.1);
+    border-color: var(--primary-color); /* הוספה */
 }
 
 .drop-zone.drag-over::after {
-    content: '';
+    content: 'שחרר כאן'; /* הוספה */
     position: absolute;
     inset: 0;
     border: 2px dashed var(--primary-color);
     border-radius: var(--border-radius);
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(25, 118, 210, 0.05);
+    color: var(--primary-color);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
 }
 
 /* Modals */
