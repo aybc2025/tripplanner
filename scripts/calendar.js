@@ -4,11 +4,18 @@ export class CalendarManager {
         this.currentDate = new Date();
         this.currentView = 'day';
         this.timeSlots = this.generateTimeSlots();
+        this.isMobile = window.innerWidth <= 768;
     }
     
     async init(date = new Date(), view = 'day') {
         this.currentDate = new Date(date);
         this.currentView = view;
+        
+        // Update mobile detection on resize
+        window.addEventListener('resize', () => {
+            this.isMobile = window.innerWidth <= 768;
+        });
+        
         console.log('Calendar manager initialized');
     }
     
@@ -142,13 +149,27 @@ export class CalendarManager {
     this.timeSlots.forEach(timeSlot => {
         const slotElement = document.createElement('div');
         slotElement.className = 'time-slot';
+        
         if (isDropZone) {
             slotElement.classList.add('drop-zone');
             slotElement.dataset.date = this.formatDateForStorage(this.currentDate);
             slotElement.dataset.time = timeSlot.time;
+            
+            // Add mobile-specific styling
+            if (this.isMobile) {
+                slotElement.style.minHeight = '50px'; // Larger touch targets
+                slotElement.classList.add('mobile-drop-zone');
+            }
         } else {
-            slotElement.textContent = timeSlot.display;
+            // Show abbreviated time labels on mobile
+            if (this.isMobile && timeSlot.hour % 2 !== 0) {
+                // Only show every other hour on mobile to save space
+                slotElement.textContent = '';
+            } else {
+                slotElement.textContent = timeSlot.display;
+            }
         }
+        
         container.appendChild(slotElement);
     });
 }
@@ -300,12 +321,21 @@ export class CalendarManager {
         
         // Add activities for this day
         const dayActivities = this.getActivitiesForDate(activities, current);
-        dayActivities.slice(0, 3).forEach(activity => { // Limit to 3 activities visible
+        const maxActivitiesToShow = this.isMobile ? 2 : 3; // Show fewer on mobile
+        
+        dayActivities.slice(0, maxActivitiesToShow).forEach(activity => {
             const activityElement = document.createElement('div');
             activityElement.className = 'month-activity';
-            activityElement.draggable = true; // ADDED
+            activityElement.draggable = true;
             activityElement.textContent = activity.title;
             activityElement.dataset.activityId = activity.id;
+            
+            // Mobile-specific improvements
+            if (this.isMobile) {
+                activityElement.style.minHeight = '24px'; // Better touch target
+                activityElement.style.fontSize = '11px';
+                activityElement.style.lineHeight = '1.2';
+            }
             
             // Add click handler - IMPROVED
             activityElement.addEventListener('click', (e) => {
@@ -321,11 +351,17 @@ export class CalendarManager {
             activitiesContainer.appendChild(activityElement);
         });
         
-        if (dayActivities.length > 3) {
+        if (dayActivities.length > maxActivitiesToShow) {
             const moreElement = document.createElement('div');
             moreElement.className = 'month-activity more-activities';
-            moreElement.textContent = `+${dayActivities.length - 3} more`;
+            moreElement.textContent = `+${dayActivities.length - maxActivitiesToShow} more`;
             moreElement.style.opacity = '0.7';
+            
+            // Mobile-specific styling for "more" element
+            if (this.isMobile) {
+                moreElement.style.minHeight = '20px';
+                moreElement.style.fontSize = '10px';
+            }
             
             // Add click handler for "more" element too
             moreElement.addEventListener('click', (e) => {
