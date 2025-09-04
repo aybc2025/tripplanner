@@ -48,6 +48,15 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-left">
+                <!-- Mobile Hamburger Menu -->
+                <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Open menu">
+                    <div class="hamburger">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </button>
+                
                 <button id="trip-selector-btn" class="trip-selector-btn">
                     <span id="current-trip-name">My Trip</span>
                     <svg class="chevron-down" width="16" height="16" viewBox="0 0 16 16">
@@ -159,6 +168,17 @@
             </main>
         </div>
     </div>
+
+    <!-- Mobile FAB (Floating Action Button) -->
+    <button id="mobile-fab" class="mobile-fab" aria-label="Add activity">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
+
+    <!-- Mobile Overlay for Activity Bank -->
+    <div id="mobile-overlay" class="mobile-overlay"></div>
 
     <!-- Trip Selector Modal -->
     <div id="trip-modal" class="modal hidden">
