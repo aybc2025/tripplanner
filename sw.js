@@ -5,17 +5,17 @@ const DYNAMIC_CACHE_NAME = `${CACHE_NAME}-dynamic`;
 
 // Files to cache for offline use
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/styles/base.css',
-    '/scripts/app.js',
-    '/scripts/db.js',
-    '/scripts/calendar.js',
-    '/scripts/dnd.js',
-    '/scripts/pwa.js',
-    '/manifest.webmanifest',
-    '/assets/icon-192x192.png',
-    '/assets/icon-512x512.png'
+    './',
+    './index.html',
+    './styles/base.css',
+    './scripts/app.js',
+    './scripts/db.js',
+    './scripts/calendar.js',
+    './scripts/dnd.js',
+    './scripts/pwa.js',
+    './manifest.webmanifest',
+    './assets/icon-192x192.png',
+    './assets/icon-512x512.png'
 ];
 
 // Dynamic assets that will be cached on first request
