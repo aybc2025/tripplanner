@@ -1355,3 +1355,72 @@ html, body {
         --text-secondary: #000000;
     }
   }
+
+/* Trip Actions */
+.trip-item {
+    position: relative;
+    padding-right: 80px; /* Make space for action buttons */
+}
+
+.trip-item-actions {
+    position: absolute;
+    top: 50%;
+    right: var(--spacing-md);
+    transform: translateY(-50%);
+    display: flex;
+    gap: var(--spacing-xs);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.trip-item:hover .trip-item-actions {
+    opacity: 1;
+}
+
+.trip-action-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.trip-action-btn.edit-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.trip-action-btn.edit-btn:hover {
+    background: var(--primary-hover);
+}
+
+.trip-action-btn.delete-btn {
+    background: var(--error);
+    color: white;
+}
+
+.trip-action-btn.delete-btn:hover {
+    background: #c62d20;
+}
+
+/* Prevent trip selection when clicking action buttons */
+.trip-item-actions {
+    z-index: 10;
+}
+
+/* Trip form validation */
+.form-group.error input {
+    border-color: var(--error);
+    box-shadow: 0 0 0 2px rgba(217, 48, 37, 0.2);
+}
+
+.form-error {
+    color: var(--error);
+    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-xs);
+}
