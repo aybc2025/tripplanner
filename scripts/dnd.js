@@ -10,6 +10,7 @@ export class DragDropManager {
         // Touch support
         this.touchStartPos = { x: 0, y: 0 };
         this.touchDragThreshold = 10;
+        this.isMobile = window.innerWidth <= 768;
         
         // Bound event handlers for proper cleanup
         this.boundHandlers = {
@@ -21,6 +22,12 @@ export class DragDropManager {
     
     init(app) {
         this.app = app;
+        
+        // Update mobile detection on resize
+        window.addEventListener('resize', () => {
+            this.isMobile = window.innerWidth <= 768;
+        });
+        
         console.log('Drag and drop manager initialized');
     }
     
@@ -116,10 +123,11 @@ setupAllCalendarActivityDraggers() {
             dragEnd: this.handleDragEnd.bind(this),
             touchStart: this.handleTouchStart.bind(this),
             touchMove: this.handleTouchMove.bind(this),
-            touchEnd: this.handleTouchEnd.bind(this)
+            touchEnd: this.handleTouchEnd.bind(this),
+            click: this.handleElementClick.bind(this)
         };
         
-        // Mouse events
+        // Mouse events (desktop)
         element.addEventListener('dragstart', element._dragHandlers.dragStart);
         element.addEventListener('dragend', element._dragHandlers.dragEnd);
         
@@ -128,7 +136,10 @@ setupAllCalendarActivityDraggers() {
         element.addEventListener('touchmove', element._dragHandlers.touchMove, { passive: false });
         element.addEventListener('touchend', element._dragHandlers.touchEnd, { passive: false });
         
-        // Make element draggable
+        // Handle click vs drag distinction
+        element.addEventListener('click', element._dragHandlers.click);
+        
+        // Make element draggable for desktop
         element.draggable = true;
         
         // Prevent default drag behavior on images and other elements
@@ -137,6 +148,21 @@ setupAllCalendarActivityDraggers() {
                 e.preventDefault();
             }
         });
+        
+        // Add visual feedback for touch devices
+        if (this.isMobile) {
+            element.style.touchAction = 'manipulation';
+        }
+    }
+    
+    handleElementClick(e) {
+        // Only handle click if we didn't just finish dragging
+        if (this.justFinishedDrag) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.justFinishedDrag = false;
+            return;
+        }
     }
     
     setupDropZone(element, dropHandler) {
@@ -177,6 +203,9 @@ setupAllCalendarActivityDraggers() {
                     break;
                 case 'touchEnd':
                     element.removeEventListener('touchend', handler);
+                    break;
+                case 'click':
+                    element.removeEventListener('click', handler);
                     break;
             }
         });
@@ -261,9 +290,10 @@ setupAllCalendarActivityDraggers() {
         const touch = e.touches[0];
         this.touchStartPos = { x: touch.clientX, y: touch.clientY };
         this.touchStartTime = Date.now();
+        this.touchMoved = false;
         
-        // Prevent default to allow custom drag behavior
-        e.preventDefault();
+        // Don't prevent default immediately - let normal touch interactions work
+        // We'll prevent it only if we start dragging
     }
     
     handleTouchMove(e) {
@@ -274,8 +304,13 @@ setupAllCalendarActivityDraggers() {
         const deltaY = touch.clientY - this.touchStartPos.y;
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
-        // Start drag if moved beyond threshold
-        if (!this.isDragging && distance > this.touchDragThreshold) {
+        this.touchMoved = distance > 5; // Track if touch moved significantly
+        
+        // Start drag if moved beyond threshold and held for minimum time
+        const holdTime = Date.now() - this.touchStartTime;
+        if (!this.isDragging && distance > this.touchDragThreshold && holdTime > 200) {
+            // Now prevent default to stop scrolling during drag
+            e.preventDefault();
             this.startTouchDrag(e.target, touch);
         }
         
@@ -289,8 +324,16 @@ setupAllCalendarActivityDraggers() {
         if (this.isDragging) {
             this.endTouchDrag(e.changedTouches[0]);
             e.preventDefault();
+            this.justFinishedDrag = true; // Flag to prevent immediate click
+            
+            // Reset flag after a short delay
+            setTimeout(() => {
+                this.justFinishedDrag = false;
+            }, 100);
         }
         
+        // Reset touch tracking
+        this.touchMoved = false;
         this.isDragging = false;
     }
     
@@ -316,17 +359,28 @@ setupAllCalendarActivityDraggers() {
         this.dragPreview.style.position = 'fixed';
         this.dragPreview.style.pointerEvents = 'none';
         this.dragPreview.style.zIndex = '1000';
-        this.dragPreview.style.opacity = '0.8';
-        this.dragPreview.style.transform = 'scale(1.05) rotate(5deg)';
-        this.dragPreview.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)';
+        this.dragPreview.style.opacity = '0.9';
+        this.dragPreview.style.transform = 'scale(1.1) rotate(3deg)';
+        this.dragPreview.style.boxShadow = '0 12px 24px rgba(0,0,0,0.4)';
+        this.dragPreview.style.borderRadius = '8px';
+        this.dragPreview.style.transition = 'none'; // Disable transitions during drag
         
         // Position at touch point
         const rect = element.getBoundingClientRect();
         this.dragPreview.style.left = `${touch.clientX - rect.width / 2}px`;
         this.dragPreview.style.top = `${touch.clientY - rect.height / 2}px`;
         this.dragPreview.style.width = `${rect.width}px`;
+        this.dragPreview.style.height = `${rect.height}px`;
+        
+        // Add mobile-specific styling
+        this.dragPreview.classList.add('touch-dragging');
         
         document.body.appendChild(this.dragPreview);
+        
+        // Add haptic feedback if available
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
     }
     
     updateTouchDrag(touch) {
