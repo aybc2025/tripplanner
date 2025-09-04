@@ -18,6 +18,7 @@ class TripPlannerApp {
         this.activities = [];
         this.bankActivities = [];
         this.currentEditingTrip = null;
+        this.currentEditingActivity = null;
         
         // DOM elements
         this.elements = {};
@@ -468,9 +469,9 @@ class TripPlannerApp {
         dates.className = 'trip-dates';
         
         // Format dates nicely
-const startDate = this.formatDisplayDate(trip.dateRange.start);
-const endDate = this.formatDisplayDate(trip.dateRange.end);
-dates.textContent = `${startDate} - ${endDate}`;
+        const startDate = this.formatDisplayDate(trip.dateRange.start);
+        const endDate = this.formatDisplayDate(trip.dateRange.end);
+        dates.textContent = `${startDate} - ${endDate}`;
         
         info.appendChild(name);
         info.appendChild(dates);
@@ -483,7 +484,7 @@ dates.textContent = `${startDate} - ${endDate}`;
         const editBtn = document.createElement('button');
         editBtn.className = 'trip-action-btn edit-btn';
         editBtn.innerHTML = '✏️';
-        editBtn.title = 'עריכת טיול';
+        editBtn.title = 'Edit Trip';
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent trip selection
             this.showTripEditModal(trip);
@@ -492,7 +493,7 @@ dates.textContent = `${startDate} - ${endDate}`;
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'trip-action-btn delete-btn';
         deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'מחיקת טיול';
+        deleteBtn.title = 'Delete Trip';
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent trip selection
             this.confirmDeleteTrip(trip);
@@ -635,25 +636,37 @@ dates.textContent = `${startDate} - ${endDate}`;
             
         } catch (error) {
             console.error('Failed to save trip:', error);
-            this.showToast('שגיאה בשמירת הטיול', 'error');
+            this.showToast('Failed to save trip', 'error');
         }
     }
     
-   if (!tripData.name || tripData.name.trim().length === 0) {
-    errors.push({ field: 'name', message: 'Trip name is required' });
-}
-
-if (!tripData.startDate) {
-    errors.push({ field: 'startDate', message: 'Start date is required' });
-}
-
-if (!tripData.endDate) {
-    errors.push({ field: 'endDate', message: 'End date is required' });
-}
-
-if (endDate < startDate) {
-    errors.push({ field: 'endDate', message: 'End date must be after start date' });
-}
+    validateTripForm(tripData) {
+        const errors = [];
+        
+        if (!tripData.name || tripData.name.trim().length === 0) {
+            errors.push({ field: 'name', message: 'Trip name is required' });
+        }
+        
+        if (!tripData.startDate) {
+            errors.push({ field: 'startDate', message: 'Start date is required' });
+        }
+        
+        if (!tripData.endDate) {
+            errors.push({ field: 'endDate', message: 'End date is required' });
+        }
+        
+        // Check if end date is after start date
+        if (tripData.startDate && tripData.endDate) {
+            const startDate = new Date(tripData.startDate);
+            const endDate = new Date(tripData.endDate);
+            
+            if (endDate < startDate) {
+                errors.push({ field: 'endDate', message: 'End date must be after start date' });
+            }
+        }
+        
+        return errors;
+    }
     
     displayTripFormErrors(errors) {
         // Clear previous errors
@@ -717,7 +730,7 @@ if (endDate < startDate) {
                     // Create a default trip if no trips remain
                     const defaultTrip = {
                         id: this.generateId(),
-                        name: 'הטיול שלי',
+                        name: 'My Trip',
                         dateRange: {
                             start: new Date().toISOString().split('T')[0],
                             end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -733,11 +746,11 @@ if (endDate < startDate) {
             }
             
             this.loadTripsInModal(); // Refresh the trips list
-            this.showToast(`הטיול "${trip.name}" נמחק`, 'success');
+            this.showToast(`Trip "${trip.name}" deleted`, 'success');
             
         } catch (error) {
             console.error('Failed to delete trip:', error);
-            this.showToast('שגיאה במחיקת הטיול', 'error');
+            this.showToast('Failed to delete trip', 'error');
         }
     }
     
@@ -1201,14 +1214,14 @@ if (endDate < startDate) {
     
     // Utility Methods
     formatDisplayDate(dateString) {
-    if (!dateString) return '';
-    
-    // Parse as local date without timezone conversion
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    
-    return date.toLocaleDateString('he-IL');
-}
+        if (!dateString) return '';
+        
+        // Parse as local date without timezone conversion
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        return date.toLocaleDateString('en-US');
+    }
     
     hideModal(modalId) {
         if (this.elements[modalId]) {
