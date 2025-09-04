@@ -37,6 +37,9 @@
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.15);
     
+    /* Touch targets */
+    --touch-target-min: 44px;
+    
     /* Layout */
     --header-height: 64px;
     --sidebar-width: 280px;
@@ -208,6 +211,52 @@ html, body {
 .nav-btn {
     width: 32px;
     height: 32px;
+}
+
+/* Mobile Hamburger Menu */
+.mobile-menu-btn {
+    display: none;
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    transition: background 0.2s;
+}
+
+.mobile-menu-btn:hover {
+    background: var(--surface-hover);
+}
+
+.hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 24px;
+    height: 18px;
+}
+
+.hamburger span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: var(--text-primary);
+    border-radius: 1px;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-btn.open .hamburger span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-menu-btn.open .hamburger span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-btn.open .hamburger span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
 }
 
 /* Main Content */
@@ -587,6 +636,17 @@ html, body {
     z-index: 1000;
 }
 
+/* Touch dragging specific styles */
+.touch-dragging {
+    filter: brightness(1.1);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1.1) rotate(3deg); }
+    50% { transform: scale(1.15) rotate(3deg); }
+}
+
 .month-activity {
     background: var(--primary-color);
     color: white;
@@ -934,54 +994,6 @@ html, body {
     }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    :root {
-        --sidebar-width: 0px;
-        --spacing-md: 12px;
-        --spacing-lg: 16px;
-    }
-    
-    .activity-bank {
-        position: fixed;
-        left: -100%;
-        top: var(--header-height);
-        height: calc(100vh - var(--header-height));
-        z-index: 100;
-        transition: left 0.3s;
-    }
-    
-    .activity-bank.open {
-        left: 0;
-    }
-    
-    .header-center {
-        flex: 0 0 auto;
-    }
-    
-    .view-switcher {
-        margin: 0 var(--spacing-sm);
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-actions {
-        flex-direction: column-reverse;
-        gap: var(--spacing-md);
-    }
-    
-    .form-actions-right {
-        width: 100%;
-        justify-content: stretch;
-    }
-    
-    .form-actions-right .btn {
-        flex: 1;
-    }
-}
-
 /* PWA Help Banner */
 .pwa-help-banner {
     position: fixed;
@@ -1316,6 +1328,52 @@ html, body {
     border: 0;
 }
 
+/* Mobile FAB (Floating Action Button) */
+.mobile-fab {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-fab:hover {
+    background: var(--primary-hover);
+    box-shadow: 0 8px 24px rgba(25, 118, 210, 0.5);
+    transform: translateY(-2px) scale(1.05);
+}
+
+.mobile-fab:active {
+    transform: translateY(0) scale(0.95);
+}
+
+/* Mobile Overlay */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mobile-overlay.active {
+    opacity: 1;
+}
+
 /* Print Styles */
 @media print {
     .app-header,
@@ -1354,7 +1412,17 @@ html, body {
         --border-color: #000000;
         --text-secondary: #000000;
     }
-  }
+    
+    /* Enhance mobile elements in high contrast */
+    .mobile-fab {
+        border: 2px solid var(--surface);
+    }
+    
+    .hamburger span {
+        background: var(--text-primary);
+        height: 3px;
+    }
+}
 
 /* Trip Actions */
 .trip-item {
@@ -1423,4 +1491,352 @@ html, body {
     color: var(--error);
     font-size: var(--font-size-sm);
     margin-top: var(--spacing-xs);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 280px; /* Keep full width for mobile sidebar */
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --header-height: 56px; /* Slightly smaller on mobile */
+    }
+    
+    /* Header adjustments */
+    .app-header {
+        height: var(--header-height);
+        padding: 0 var(--spacing-sm);
+    }
+    
+    /* Show mobile hamburger menu */
+    .mobile-menu-btn {
+        display: flex;
+    }
+    
+    /* Hide desktop trip selector on very small screens */
+    .trip-selector-btn {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        margin-left: var(--spacing-sm);
+    }
+    
+    /* Activity Bank mobile behavior */
+    .activity-bank {
+        position: fixed;
+        left: -100%;
+        top: var(--header-height);
+        height: calc(100vh - var(--header-height));
+        z-index: 95;
+        transition: left 0.3s ease;
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .activity-bank.open {
+        left: 0;
+    }
+    
+    /* Show mobile FAB */
+    .mobile-fab {
+        display: flex;
+    }
+    
+    /* Calendar container takes full width */
+    .calendar-container {
+        margin-left: 0;
+    }
+    
+    /* Header layout adjustments */
+    .header-center {
+        flex: 0 0 auto;
+        margin: 0;
+    }
+    
+    .header-right {
+        gap: var(--spacing-xs);
+    }
+    
+    /* View switcher mobile optimization */
+    .view-switcher {
+        margin: 0;
+        padding: 2px;
+    }
+    
+    .view-btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-sm);
+        min-width: var(--touch-target-min);
+        min-height: 36px;
+    }
+    
+    /* Navigation buttons larger touch targets */
+    .nav-btn, .header-btn {
+        min-width: var(--touch-target-min);
+        min-height: var(--touch-target-min);
+        padding: var(--spacing-sm);
+    }
+    
+    /* Calendar optimizations for mobile */
+    .calendar-header {
+        padding: var(--spacing-sm);
+    }
+    
+    .calendar-header h2 {
+        font-size: var(--font-size-xl);
+    }
+    
+    /* Day view mobile optimization */
+    .day-content {
+        grid-template-columns: 50px 1fr; /* Narrower time column */
+    }
+    
+    .time-column {
+        width: 50px;
+    }
+    
+    .time-slot {
+        font-size: 11px;
+        height: 50px; /* Shorter slots on mobile */
+    }
+    
+    /* Week view - switch to day view behavior on small screens */
+    .week-header {
+        grid-template-columns: 50px repeat(7, 1fr);
+    }
+    
+    .week-content {
+        grid-template-columns: 50px repeat(7, 1fr);
+    }
+    
+    .week-day {
+        padding: var(--spacing-xs);
+        font-size: var(--font-size-sm);
+    }
+    
+    .week-day-date {
+        font-size: var(--font-size-base);
+    }
+    
+    /* Month view mobile optimization */
+    .month-day {
+        min-height: 80px;
+        padding: var(--spacing-xs);
+    }
+    
+    .month-day-number {
+        font-size: var(--font-size-sm);
+    }
+    
+    .month-activity {
+        font-size: 11px;
+        padding: 1px 3px;
+        margin-bottom: 1px;
+        min-height: var(--touch-target-min); /* Ensure touch target size */
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Activity items larger touch targets */
+    .activity-item {
+        min-height: var(--touch-target-min);
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+        touch-action: manipulation; /* Improve touch responsiveness */
+    }
+    
+    .calendar-activity {
+        min-height: 36px;
+        padding: var(--spacing-sm);
+        font-size: var(--font-size-sm);
+        touch-action: manipulation;
+    }
+    
+    /* Form improvements for mobile */
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+    
+    .form-actions {
+        flex-direction: column-reverse;
+        gap: var(--spacing-md);
+        padding-top: var(--spacing-md);
+    }
+    
+    .form-actions-right {
+        width: 100%;
+        justify-content: stretch;
+    }
+    
+    .form-actions-right .btn {
+        flex: 1;
+        min-height: var(--touch-target-min);
+    }
+    
+    .primary-btn, .secondary-btn, .danger-btn {
+        min-height: var(--touch-target-min);
+        padding: var(--spacing-md) var(--spacing-lg);
+        font-size: var(--font-size-base);
+    }
+    
+    /* Modal improvements for mobile */
+    .modal {
+        padding: var(--spacing-sm);
+        align-items: flex-start;
+        padding-top: 10vh; /* Start modals higher up */
+    }
+    
+    .modal-content {
+        max-height: 85vh;
+        width: calc(100vw - 2 * var(--spacing-sm));
+        max-width: none;
+        margin: 0;
+    }
+    
+    .modal-header {
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm) var(--spacing-md);
+        position: sticky;
+        top: 0;
+        background: var(--surface);
+        z-index: 1;
+    }
+    
+    .modal-body {
+        padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md) var(--spacing-md);
+        max-height: none;
+    }
+    
+    .close-btn {
+        min-width: var(--touch-target-min);
+        min-height: var(--touch-target-min);
+    }
+    
+    /* Toast positioning for mobile */
+    .toast-container {
+        top: calc(var(--header-height) + var(--spacing-sm));
+        right: var(--spacing-sm);
+        left: var(--spacing-sm);
+    }
+    
+    .toast {
+        max-width: none;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    /* PWA banners mobile adjustments */
+    .pwa-help-banner {
+        top: var(--header-height);
+        padding: var(--spacing-sm);
+    }
+    
+    .install-banner {
+        bottom: calc(56px + 24px + var(--spacing-sm)); /* Above FAB */
+        left: var(--spacing-sm);
+        right: var(--spacing-sm);
+    }
+    
+    /* Improve touch interactions */
+    .drop-zone.drag-over::after {
+        font-size: var(--font-size-base);
+        border-width: 3px;
+    }
+    
+    /* Add visual feedback for touch */
+    .activity-item:active,
+    .calendar-activity:active,
+    .month-activity:active {
+        transform: scale(0.98);
+        opacity: 0.8;
+    }
+    
+    /* Better focus indicators for mobile */
+    .mobile-menu-btn:focus-visible,
+    .mobile-fab:focus-visible,
+    .view-btn:focus-visible,
+    .nav-btn:focus-visible,
+    .header-btn:focus-visible {
+        outline: 3px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+    
+    /* Ensure text is readable in activity elements */
+    .activity-item,
+    .calendar-activity,
+    .month-activity {
+        font-weight: 500;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+}
+
+/* Extra small screens (phones in portrait) */
+@media (max-width: 480px) {
+    :root {
+        --spacing-md: 8px;
+        --spacing-lg: 12px;
+    }
+    
+    /* Hide less important elements on tiny screens */
+    .trip-selector-btn span {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Stack header elements better */
+    .header-left {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .header-center {
+        flex: 0 0 auto;
+    }
+    
+    .header-right {
+        flex: 0 0 auto;
+    }
+    
+    /* Month view even more compact */
+    .month-day {
+        min-height: 60px;
+        font-size: var(--font-size-sm);
+    }
+    
+    .month-activity {
+        font-size: 10px;
+        padding: 1px 2px;
+    }
+    
+    /* Time slots more compact */
+    .time-slot {
+        height: 40px;
+        font-size: 10px;
+    }
+    
+    /* Activity bank more compact */
+    .bank-header {
+        padding: var(--spacing-sm);
+    }
+    
+    .bank-activities {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* Tablet portrait (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    :root {
+        --sidebar-width: 320px; /* Wider sidebar on tablets */
+    }
+    
+    /* Show mobile FAB on tablets too for better UX */
+    .mobile-fab {
+        display: flex;
+    }
+    
+    /* Larger touch targets on tablets */
+    .view-btn {
+        min-height: 40px;
+        padding: var(--spacing-sm) var(--spacing-lg);
+    }
 }
