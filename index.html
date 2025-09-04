@@ -178,6 +178,43 @@
         </div>
     </div>
 
+    <!-- Trip Edit Modal -->
+    <div id="trip-edit-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="trip-edit-title">Edit Trip</h3>
+                <button id="close-trip-edit-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="trip-form">
+                    <div class="form-group">
+                        <label for="trip-name">Trip Name *</label>
+                        <input type="text" id="trip-name" name="name" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="trip-start">Start Date *</label>
+                            <input type="date" id="trip-start" name="startDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="trip-end">End Date *</label>
+                            <input type="date" id="trip-end" name="endDate" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="delete-trip-btn" class="danger-btn">Delete Trip</button>
+                        <div class="form-actions-right">
+                            <button type="button" id="cancel-trip-btn" class="secondary-btn">Cancel</button>
+                            <button type="submit" id="save-trip-btn" class="primary-btn">Save Trip</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <!-- Activity Details Modal -->
     <div id="activity-modal" class="modal hidden">
         <div class="modal-content activity-modal-content">
