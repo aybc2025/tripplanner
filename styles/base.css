@@ -444,11 +444,14 @@ html, body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    position: relative;
 }
 
 .time-slots {
     border-right: 1px solid var(--border-color);
     background: var(--surface);
+    position: relative;
+    z-index: 1;
 }
 
 .time-slot {
@@ -460,16 +463,48 @@ html, body {
     border-bottom: 1px solid var(--border-color);
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
+    position: relative;
 }
 
 .day-activities {
     position: relative;
     background: var(--background);
+    overflow: visible;
 }
 
 .day-activities .time-slot {
     border-right: none;
     background: transparent;
+    /* Ensure the grid lines align perfectly */
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Ensure perfect alignment between time slots and activity area */
+.day-content .time-slot:nth-child(n) {
+    height: 60px;
+    box-sizing: border-box;
+}
+
+/* Mobile time slots alignment */
+@media (max-width: 768px) {
+    .day-content {
+        grid-template-columns: 50px 1fr; /* Narrower time column */
+    }
+    
+    .time-column {
+        width: 50px;
+    }
+    
+    .time-slot {
+        font-size: 11px;
+        height: 50px; /* Shorter slots on mobile */
+    }
+    
+    /* Ensure mobile slots stay aligned */
+    .day-content .time-slot:nth-child(n) {
+        height: 50px;
+        box-sizing: border-box;
+    }
 }
 
 /* Week View */
@@ -640,55 +675,67 @@ html, body {
 .touch-dragging {
     filter: brightness(1.1);
     animation: pulse 1s infinite;
+    border: 2px solid var(--primary-color) !important;
+    background: var(--primary-color) !important;
+    color: white !important;
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1.1) rotate(3deg); }
-    50% { transform: scale(1.15) rotate(3deg); }
+    0%, 100% { 
+        transform: scale(1.1) rotate(3deg);
+        box-shadow: 0 12px 24px rgba(25, 118, 210, 0.4);
+    }
+    50% { 
+        transform: scale(1.15) rotate(3deg);
+        box-shadow: 0 16px 32px rgba(25, 118, 210, 0.6);
+    }
 }
 
-.month-activity {
-    background: var(--primary-color);
-    color: white;
-    padding: 2px 4px;
-    border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-sm);
-    margin-bottom: 2px;
-    cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: all 0.2s; /* הוספה */
-    user-select: none; /* הוספה */
-}
-
-/* הוסף הגדרות חדשות */
-.month-activity:hover {
-    background: var(--primary-hover);
-    transform: scale(1.02);
-}
-
-.month-activity.more-activities {
-    cursor: pointer;
-    font-style: italic;
-}
-
-.month-activity.more-activities:hover {
-    background: var(--text-secondary);
+/* Enhanced dragging feedback for mobile */
+@media (max-width: 768px) {
+    .activity-item.dragging {
+        opacity: 0.3;
+        transform: scale(0.95);
+        cursor: grabbing;
+        background: var(--text-disabled);
+        color: var(--text-primary);
+        border: 2px dashed var(--primary-color);
+    }
+    
+    .calendar-activity.dragging {
+        opacity: 0.3;
+        transform: scale(0.95);
+        background: var(--text-disabled);
+        color: var(--text-primary);
+        border: 2px dashed var(--primary-color);
+    }
+    
+    /* Better visual feedback when dragging starts */
+    .activity-item:active:not(.dragging) {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+    
+    .calendar-activity:active:not(.dragging) {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
 }
 
 /* Drop Zones */
 .drop-zone {
     position: relative;
+    transition: all 0.2s ease;
 }
 
 .drop-zone.drag-over {
     background: rgba(25, 118, 210, 0.1);
-    border-color: var(--primary-color); /* הוספה */
+    border-color: var(--primary-color);
+    transform: scale(1.02);
 }
 
 .drop-zone.drag-over::after {
-    content: 'Drop here'; /* הוספה */
+    content: '📍 Drop here';
     position: absolute;
     inset: 0;
     border: 2px dashed var(--primary-color);
@@ -701,6 +748,41 @@ html, body {
     color: var(--primary-color);
     font-size: var(--font-size-sm);
     font-weight: 500;
+    z-index: 10;
+}
+
+/* Mobile drop zone enhancements */
+@media (max-width: 768px) {
+    .mobile-drop-zone {
+        min-height: 50px;
+        border: 1px dashed transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-drop-zone.drag-over {
+        min-height: 60px;
+        border-color: var(--primary-color);
+        background: rgba(25, 118, 210, 0.15);
+    }
+    
+    .mobile-drop-zone.drag-over::after {
+        content: '📍 Drop';
+        font-size: 16px;
+        font-weight: 600;
+        border-width: 3px;
+        animation: pulse-border 1s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-border {
+        0%, 100% { 
+            border-color: var(--primary-color);
+            background: rgba(25, 118, 210, 0.15);
+        }
+        50% { 
+            border-color: var(--primary-hover);
+            background: rgba(25, 118, 210, 0.25);
+        }
+    }
 }
 
 /* Modals */
