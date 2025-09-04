@@ -156,14 +156,25 @@ setupAllCalendarActivityDraggers() {
     }
     
     handleElementClick(e) {
-        // Only handle click if we didn't just finish dragging
-        if (this.justFinishedDrag) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.justFinishedDrag = false;
-            return;
-        }
+    // Only handle click if we didn't just finish dragging
+    if (this.justFinishedDrag) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Click prevented - just finished dragging');
+        return;
     }
+    
+    // Also prevent click if we moved during touch (even if not dragging)
+    if (this.touchMoved && Date.now() - this.touchStartTime < 1000) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Click prevented - touch moved');
+        return;
+    }
+    
+    // Allow normal click handling
+    console.log('Click allowed');
+}
     
     setupDropZone(element, dropHandler) {
         if (!element) return;
@@ -321,67 +332,85 @@ setupAllCalendarActivityDraggers() {
     }
     
     handleTouchEnd(e) {
-        if (this.isDragging) {
-            this.endTouchDrag(e.changedTouches[0]);
-            e.preventDefault();
-            this.justFinishedDrag = true; // Flag to prevent immediate click
-            
-            // Reset flag after a short delay
-            setTimeout(() => {
-                this.justFinishedDrag = false;
-            }, 100);
-        }
+    const wasNonDraggingTap = !this.isDragging && !this.touchMoved;
+    
+    if (this.isDragging) {
+        this.endTouchDrag(e.changedTouches[0]);
+        e.preventDefault();
+        e.stopPropagation();
+        this.justFinishedDrag = true; // Flag to prevent immediate click
         
-        // Reset touch tracking
-        this.touchMoved = false;
-        this.isDragging = false;
+        // Reset flag after a short delay
+        setTimeout(() => {
+            this.justFinishedDrag = false;
+        }, 150);
+    } else if (wasNonDraggingTap) {
+        // This was a normal tap, allow click event to proceed
+        this.justFinishedDrag = false;
     }
     
-    startTouchDrag(element, touch) {
-        this.draggedElement = element;
-        this.draggedActivity = this.getActivityFromElement(element);
-        this.isDragging = true;
-        
-        if (!this.draggedActivity) return;
-        
-        // Create drag preview
-        this.createTouchDragPreview(element, touch);
-        
-        // Add visual feedback
-        element.classList.add('dragging');
-        
-        console.log('Touch drag started:', this.draggedActivity.title);
+    // Always reset touch tracking
+    this.touchMoved = false;
+    this.isDragging = false;
+    this.touchStartTime = 0;
+}
+    
+   startTouchDrag(element, touch) {
+    this.draggedElement = element;
+    this.draggedActivity = this.getActivityFromElement(element);
+    this.isDragging = true;
+    
+    if (!this.draggedActivity) return;
+    
+    // Show instructions for first time mobile users
+    if (this.isMobile && !localStorage.getItem('mobile-drag-instructions-shown')) {
+        if (this.app && this.app.showToast) {
+            this.app.showToast('💡 Hold and drag to move activities between calendar and activity bank', 'info');
+        }
+        localStorage.setItem('mobile-drag-instructions-shown', 'true');
     }
+    
+    // Create drag preview
+    this.createTouchDragPreview(element, touch);
+    
+    // Add visual feedback
+    element.classList.add('dragging');
+    
+    console.log('Touch drag started:', this.draggedActivity.title);
+}
     
     createTouchDragPreview(element, touch) {
-        // Create a clone of the element to follow the finger
-        this.dragPreview = element.cloneNode(true);
-        this.dragPreview.style.position = 'fixed';
-        this.dragPreview.style.pointerEvents = 'none';
-        this.dragPreview.style.zIndex = '1000';
-        this.dragPreview.style.opacity = '0.9';
-        this.dragPreview.style.transform = 'scale(1.1) rotate(3deg)';
-        this.dragPreview.style.boxShadow = '0 12px 24px rgba(0,0,0,0.4)';
-        this.dragPreview.style.borderRadius = '8px';
-        this.dragPreview.style.transition = 'none'; // Disable transitions during drag
-        
-        // Position at touch point
-        const rect = element.getBoundingClientRect();
-        this.dragPreview.style.left = `${touch.clientX - rect.width / 2}px`;
-        this.dragPreview.style.top = `${touch.clientY - rect.height / 2}px`;
-        this.dragPreview.style.width = `${rect.width}px`;
-        this.dragPreview.style.height = `${rect.height}px`;
-        
-        // Add mobile-specific styling
-        this.dragPreview.classList.add('touch-dragging');
-        
-        document.body.appendChild(this.dragPreview);
-        
-        // Add haptic feedback if available
-        if (navigator.vibrate) {
-            navigator.vibrate(50);
-        }
+    // Create a clone of the element to follow the finger
+    this.dragPreview = element.cloneNode(true);
+    this.dragPreview.style.position = 'fixed';
+    this.dragPreview.style.pointerEvents = 'none';
+    this.dragPreview.style.zIndex = '1000';
+    this.dragPreview.style.opacity = '0.9';
+    this.dragPreview.style.transform = 'scale(1.1) rotate(3deg)';
+    this.dragPreview.style.boxShadow = '0 12px 24px rgba(0,0,0,0.4)';
+    this.dragPreview.style.borderRadius = '8px';
+    this.dragPreview.style.transition = 'none'; // Disable transitions during drag
+    this.dragPreview.style.border = '2px solid var(--primary-color)'; // Add visual border
+    this.dragPreview.style.background = 'var(--primary-color)'; // Ensure consistent background
+    this.dragPreview.style.color = 'white'; // Ensure text is visible
+    
+    // Position at touch point
+    const rect = element.getBoundingClientRect();
+    this.dragPreview.style.left = `${touch.clientX - rect.width / 2}px`;
+    this.dragPreview.style.top = `${touch.clientY - rect.height / 2}px`;
+    this.dragPreview.style.width = `${rect.width}px`;
+    this.dragPreview.style.height = `${rect.height}px`;
+    
+    // Add mobile-specific styling
+    this.dragPreview.classList.add('touch-dragging');
+    
+    document.body.appendChild(this.dragPreview);
+    
+    // Add haptic feedback if available
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
     }
+}
     
     updateTouchDrag(touch) {
         if (!this.dragPreview) return;
@@ -410,29 +439,72 @@ setupAllCalendarActivityDraggers() {
         
         try {
             dropTarget._dropHandler(dropEvent);
+            
+            // Add success haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate([50, 25, 50]);
+            }
+            
         } catch (error) {
             console.error('Touch drop handler failed:', error);
             if (this.app) {
                 this.app.showToast('Failed to drop activity', 'error');
             }
+            
+            // Add error haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+    } else {
+        // No valid drop target - add feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
         }
     }
     
-    // Clean up
+    // Clean up immediately to prevent stuck animations
+    this.cleanupTouchDrag();
+    
+    console.log('Touch drag ended');
+}
+
+cleanupTouchDrag() {
+    // Clean up drag preview
     if (this.dragPreview && this.dragPreview.parentNode) {
-        document.body.removeChild(this.dragPreview);
+        // Add fade out animation
+        this.dragPreview.style.transition = 'opacity 0.2s ease-out';
+        this.dragPreview.style.opacity = '0';
+        
+        setTimeout(() => {
+            if (this.dragPreview && this.dragPreview.parentNode) {
+                document.body.removeChild(this.dragPreview);
+            }
+            this.dragPreview = null;
+        }, 200);
+    } else {
         this.dragPreview = null;
     }
     
+    // Clean up dragging element immediately
     if (this.draggedElement && this.draggedElement.classList) {
         this.draggedElement.classList.remove('dragging');
+        
+        // Reset any transform applied during drag
+        this.draggedElement.style.transition = 'transform 0.2s ease-out';
+        this.draggedElement.style.transform = '';
+        
+        // Clear transition after animation
+        setTimeout(() => {
+            if (this.draggedElement && this.draggedElement.style) {
+                this.draggedElement.style.transition = '';
+            }
+        }, 200);
     }
     
     this.clearDropZoneHighlights();
     this.draggedElement = null;
     this.draggedActivity = null;
-    
-    console.log('Touch drag ended');
 }
     
     highlightDropZoneAtPoint(x, y) {
