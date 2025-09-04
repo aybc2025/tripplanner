@@ -30,6 +30,18 @@
         <p>Loading Trip Planner...</p>
     </div>
 
+<!-- PWA Installation Help -->
+    <div id="pwa-help-banner" class="pwa-help-banner" style="display: none;">
+        <div class="pwa-help-content">
+            <span class="pwa-help-icon">📱</span>
+            <div class="pwa-help-text">
+                <strong>Install as App</strong>
+                <small>Get offline access and native app experience</small>
+            </div>
+            <button class="pwa-help-close" onclick="this.parentElement.parentElement.style.display='none'; localStorage.setItem('pwa-help-dismissed', 'true');">×</button>
+        </div>
+    </div>
+
     <!-- Main App Container -->
     <div id="app" class="app-container hidden">
         
