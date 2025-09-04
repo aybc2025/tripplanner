@@ -43,6 +43,8 @@ class TripPlannerApp {
             await this.calendar.init(this.currentDate, this.currentView);
             this.dragDrop.init(this);
             this.pwa.init();
+            // Make PWA available globally for install buttons
+            window.app = this;
             
             // Setup event listeners
             this.setupEventListeners();
@@ -52,6 +54,12 @@ class TripPlannerApp {
             
             // Hide loading screen and show app
             this.hideLoadingScreen();
+            // Show PWA install prompt after a delay if available
+            setTimeout(() => {
+                if (this.pwa && this.pwa.installPrompt) {
+                    this.showToast('💡 Tip: You can install this app for offline use!', 'info');
+                }
+            }, 5000);
             
             console.log('App initialized successfully');
         } catch (error) {
@@ -82,11 +90,11 @@ class TripPlannerApp {
     }
     
     setupEventListeners() {
-         // Custom event listener for activity clicks (ADD THIS)
-    document.addEventListener('activityClick', (e) => {
-        const activity = e.detail.activity;
-        this.showActivityModal(activity);
-    });
+        // Custom event listener for activity clicks
+        document.addEventListener('activityClick', (e) => {
+            const activity = e.detail.activity;
+            this.showActivityModal(activity);
+        });
         
         // View switcher
         const viewButtons = ['day-view', 'week-view', 'month-view'];
@@ -969,12 +977,16 @@ if (activityData.end) {
         
         this.elements['toast-container'].appendChild(toast);
         
-        // Auto remove after 3 seconds
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
         }, 3000);
+        
+        // Link PWA manager back to app
+        if (this.pwa && this.pwa.showToast) {
+            this.pwa.app = this;
+        }
     }
     
     handleKeyboardShortcuts(e) {
