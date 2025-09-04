@@ -161,9 +161,9 @@ export class CalendarManager {
                 slotElement.classList.add('mobile-drop-zone');
             }
         } else {
-            // Show abbreviated time labels on mobile
-            if (this.isMobile && timeSlot.hour % 2 !== 0) {
-                // Only show every other hour on mobile to save space
+            // Show abbreviated time labels on mobile to save space
+            if (this.isMobile && timeSlot.hour % 2 !== 0 && timeSlot.hour !== 0) {
+                // Only show every other hour on mobile (but always show midnight)
                 slotElement.textContent = '';
             } else {
                 slotElement.textContent = timeSlot.display;
@@ -407,31 +407,33 @@ export class CalendarManager {
 }
     
     positionDayActivity(element, activity) {
-        const startTime = new Date(activity.start);
-        const endTime = new Date(activity.end);
-        
-        // Calculate position based on time
-        const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-        const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
-        const duration = endMinutes - startMinutes;
-        
-        // Each hour is 60px, starting from 6 AM (360 minutes)
-        const startOffset = Math.max(0, startMinutes - 360); // 6 AM = 360 minutes
-        const top = (startOffset / 60) * 60; // 60px per hour
-        const height = Math.max(30, (duration / 60) * 60); // Minimum 30px height
-        
-        element.style.top = `${top}px`;
-        element.style.height = `${height}px`;
-        
-        // Add time to activity if not too small
-        if (height >= 40) {
-            const timeSpan = document.createElement('div');
-            timeSpan.style.fontSize = '11px';
-            timeSpan.style.opacity = '0.8';
-            timeSpan.textContent = `${this.formatTime(startTime)} - ${this.formatTime(endTime)}`;
-            element.appendChild(timeSpan);
-        }
+    const startTime = new Date(activity.start);
+    const endTime = new Date(activity.end);
+    
+    // Calculate position based on time
+    const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+    const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+    const duration = endMinutes - startMinutes;
+    
+    // Each hour is 60px, starting from 6 AM (360 minutes)
+    // Handle activities that go past midnight (24:00 = 1440 minutes)
+    const startOffset = Math.max(0, startMinutes - 360); // 6 AM = 360 minutes
+    const slotHeight = this.isMobile ? 50 : 60; // Mobile uses 50px slots
+    const top = (startOffset / 60) * slotHeight;
+    const height = Math.max(30, (duration / 60) * slotHeight); // Minimum 30px height
+    
+    element.style.top = `${top}px`;
+    element.style.height = `${height}px`;
+    
+    // Add time to activity if not too small
+    if (height >= 40) {
+        const timeSpan = document.createElement('div');
+        timeSpan.style.fontSize = '11px';
+        timeSpan.style.opacity = '0.8';
+        timeSpan.textContent = `${this.formatTime(startTime)} - ${this.formatTime(endTime)}`;
+        element.appendChild(timeSpan);
     }
+}
     
     positionWeekActivity(element, activity, dayIndex) {
         const startTime = new Date(activity.start);
@@ -454,24 +456,25 @@ export class CalendarManager {
     }
     
     generateTimeSlots() {
-        const slots = [];
+    const slots = [];
+    
+    // Generate slots from 6 AM to 12 AM (midnight) in 1-hour increments
+    for (let hour = 6; hour <= 24; hour++) {
+        const displayHour = hour === 24 ? 0 : hour; // Show 12 AM for hour 24
+        const time24 = hour === 24 ? '00:00' : `${hour.toString().padStart(2, '0')}:00`;
+        const hour12 = displayHour === 0 ? 12 : displayHour > 12 ? displayHour - 12 : displayHour;
+        const ampm = displayHour < 12 ? 'AM' : 'PM';
+        const display = displayHour === 12 ? '12 PM' : displayHour === 0 ? '12 AM' : `${hour12} ${ampm}`;
         
-        // Generate slots from 6 AM to 11 PM in 1-hour increments
-        for (let hour = 6; hour <= 23; hour++) {
-            const time24 = `${hour.toString().padStart(2, '0')}:00`;
-            const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            const ampm = hour < 12 ? 'AM' : 'PM';
-            const display = hour === 12 ? '12 PM' : `${hour12} ${ampm}`;
-            
-            slots.push({
-                time: time24,
-                display: display,
-                hour: hour
-            });
-        }
-        
-        return slots;
+        slots.push({
+            time: time24,
+            display: display,
+            hour: displayHour
+        });
     }
+    
+    return slots;
+}
     
     getActivitiesForDate(activities, date) {
         return activities.filter(activity => {
