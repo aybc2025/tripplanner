@@ -468,9 +468,9 @@ class TripPlannerApp {
         dates.className = 'trip-dates';
         
         // Format dates nicely
-        const startDate = new Date(trip.dateRange.start).toLocaleDateString('he-IL');
-        const endDate = new Date(trip.dateRange.end).toLocaleDateString('he-IL');
-        dates.textContent = `${startDate} - ${endDate}`;
+const startDate = this.formatDisplayDate(trip.dateRange.start);
+const endDate = this.formatDisplayDate(trip.dateRange.end);
+dates.textContent = `${startDate} - ${endDate}`;
         
         info.appendChild(name);
         info.appendChild(dates);
@@ -530,7 +530,7 @@ class TripPlannerApp {
         
         // Update modal title
         if (this.elements['trip-edit-title']) {
-            this.elements['trip-edit-title'].textContent = trip ? 'עריכת טיול' : 'טיול חדש';
+            this.elements['trip-edit-title'].textContent = trip ? 'Edit Trip' : 'New Trip';
         }
         
         // Focus on name field
@@ -630,8 +630,8 @@ class TripPlannerApp {
             this.hideTripEditModal();
             this.loadTripsInModal(); // Refresh the trips list
             
-            const action = this.currentEditingTrip ? 'עודכן' : 'נוצר';
-            this.showToast(`הטיול "${trip.name}" ${action} בהצלחה`, 'success');
+            const action = this.currentEditingTrip ? 'updated' : 'created';
+            this.showToast(`Trip "${trip.name}" ${action} successfully`, 'success');
             
         } catch (error) {
             console.error('Failed to save trip:', error);
@@ -639,32 +639,21 @@ class TripPlannerApp {
         }
     }
     
-    validateTripForm(tripData) {
-        const errors = [];
-        
-        if (!tripData.name || tripData.name.trim().length === 0) {
-            errors.push({ field: 'name', message: 'שם הטיול הוא שדה חובה' });
-        }
-        
-        if (!tripData.startDate) {
-            errors.push({ field: 'startDate', message: 'תאריך התחלה הוא שדה חובה' });
-        }
-        
-        if (!tripData.endDate) {
-            errors.push({ field: 'endDate', message: 'תאריך סיום הוא שדה חובה' });
-        }
-        
-        if (tripData.startDate && tripData.endDate) {
-            const startDate = new Date(tripData.startDate);
-            const endDate = new Date(tripData.endDate);
-            
-            if (endDate < startDate) {
-                errors.push({ field: 'endDate', message: 'תאריך הסיום חייב להיות אחרי תאריך ההתחלה' });
-            }
-        }
-        
-        return errors;
-    }
+   if (!tripData.name || tripData.name.trim().length === 0) {
+    errors.push({ field: 'name', message: 'Trip name is required' });
+}
+
+if (!tripData.startDate) {
+    errors.push({ field: 'startDate', message: 'Start date is required' });
+}
+
+if (!tripData.endDate) {
+    errors.push({ field: 'endDate', message: 'End date is required' });
+}
+
+if (endDate < startDate) {
+    errors.push({ field: 'endDate', message: 'End date must be after start date' });
+}
     
     displayTripFormErrors(errors) {
         // Clear previous errors
@@ -707,7 +696,7 @@ class TripPlannerApp {
     }
     
     confirmDeleteTrip(trip) {
-        const message = `האם אתה בטוח שברצונך למחוק את הטיול "${trip.name}"?\n\nפעולה זו תמחק גם את כל הפעילויות בטיול ולא ניתן לבטלה.`;
+        const message = `Are you sure you want to delete the trip "${trip.name}"?\n\nThis action will also delete all activities in the trip and cannot be undone.`;
         
         if (confirm(message)) {
             this.deleteTrip(trip);
@@ -1211,6 +1200,16 @@ class TripPlannerApp {
     }
     
     // Utility Methods
+    formatDisplayDate(dateString) {
+    if (!dateString) return '';
+    
+    // Parse as local date without timezone conversion
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    return date.toLocaleDateString('he-IL');
+}
+    
     hideModal(modalId) {
         if (this.elements[modalId]) {
             this.elements[modalId].classList.add('hidden');
