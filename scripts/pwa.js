@@ -79,6 +79,8 @@ export class PWAManager {
             
             // Show install button/banner
             this.showInstallOption();
+            // Also show help banner
+            this.showPWAHelpBanner();
             
             console.log('Install prompt available');
         });
@@ -94,59 +96,130 @@ export class PWAManager {
     }
     
     showInstallOption() {
-        // Add install button to header or show install banner
+        // Show different install prompts based on device type
+        if (window.innerWidth <= 768) {
+            this.showMobileInstallBanner();
+        } else {
+            this.showDesktopInstallNotification();
+        }
+        
+        // Also show header button for quick access
+        this.showHeaderInstallButton();
+    }
+
+    showMobileInstallBanner() {
+        const existingBanner = document.getElementById('install-banner');
+        if (existingBanner) existingBanner.remove();
+        
+        const banner = document.createElement('div');
+        banner.id = 'install-banner';
+        banner.className = 'install-banner';
+        banner.innerHTML = `
+            <button class="install-banner-close" onclick="this.parentElement.remove()">×</button>
+            <div class="install-banner-content">
+                <div class="install-banner-icon">📱</div>
+                <div class="install-banner-text">
+                    <div class="install-banner-title">Install Trip Planner</div>
+                    <div class="install-banner-subtitle">Access your trips offline and get a native app experience</div>
+                </div>
+            </div>
+            <div class="install-banner-actions">
+                <button class="install-banner-btn primary" onclick="window.app?.pwa?.promptInstall?.()">Install Now</button>
+                <button class="install-banner-btn secondary" onclick="this.parentElement.parentElement.remove()">Maybe Later</button>
+            </div>
+        `;
+        
+        document.body.appendChild(banner);
+        setTimeout(() => banner.classList.add('show'), 100);
+        setTimeout(() => { if (banner?.parentNode) banner.remove(); }, 10000);
+    }
+    
+    showDesktopInstallNotification() {
+        const existingNotification = document.getElementById('install-notification');
+        if (existingNotification) existingNotification.remove();
+        
+        const notification = document.createElement('div');
+        notification.id = 'install-notification';
+        notification.className = 'install-notification';
+        notification.innerHTML = `
+            <div class="install-notification-title">📱 Install Trip Planner</div>
+            <div class="install-notification-text">Get the full app experience with offline access and native features.</div>
+            <div class="install-banner-actions">
+                <button class="install-banner-btn primary" onclick="window.app?.pwa?.promptInstall?.()">Install App</button>
+                <button class="install-banner-btn secondary" onclick="this.parentElement.parentElement.remove()">Dismiss</button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        setTimeout(() => notification.classList.add('show'), 100);
+        setTimeout(() => { if (notification?.parentNode) notification.remove(); }, 8000);
+    }
+    
+    showHeaderInstallButton() {
         const header = document.querySelector('.app-header .header-right');
         if (!header) return;
         
-        let installBtn = header.querySelector('.install-btn');
-        if (installBtn) return; // Already showing
+        let installBtn = header.querySelector('.header-install-btn');
+        if (installBtn) return;
         
         installBtn = document.createElement('button');
-        installBtn.className = 'header-btn install-btn';
-        installBtn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8.5 1.5v6h2l-2.5 3-2.5-3h2v-6h1z"/>
-                <path d="M3 12v1h10v-1H3z"/>
-            </svg>
-            Install
-        `;
+        installBtn.className = 'header-install-btn';
+        installBtn.innerHTML = `<span class="install-icon">📱</span>Install`;
         installBtn.title = 'Install app on your device';
-        
         installBtn.addEventListener('click', () => this.promptInstall());
-        
         header.insertBefore(installBtn, header.firstChild);
     }
     
-    hideInstallOption() {
-        const installBtn = document.querySelector('.install-btn');
-        if (installBtn) {
-            installBtn.remove();
+    showPWAHelpBanner() {
+        const helpBanner = document.getElementById('pwa-help-banner');
+        if (helpBanner && !localStorage.getItem('pwa-help-dismissed')) {
+            helpBanner.style.display = 'block';
+            setTimeout(() => {
+                if (helpBanner.style.display !== 'none') {
+                    helpBanner.style.display = 'none';
+                    localStorage.setItem('pwa-help-dismissed', 'true');
+                }
+            }, 8000);
         }
+    }
+    
+    hideInstallOption() {
+        const headerInstallBtn = document.querySelector('.header-install-btn');
+        if (headerInstallBtn) headerInstallBtn.remove();
+        
+        const installBanner = document.getElementById('install-banner');
+        if (installBanner) installBanner.remove();
+        
+        const installNotification = document.getElementById('install-notification');
+        if (installNotification) installNotification.remove();
+        
+        const helpBanner = document.getElementById('pwa-help-banner');
+        if (helpBanner) helpBanner.style.display = 'none';
     }
     
     async promptInstall() {
         if (!this.installPrompt) {
-            this.showToast('Install not available', 'warning');
+            this.showToast('Install option not available. Try using browser menu → "Install app" or "Add to Home Screen"', 'info');
             return;
         }
         
         try {
-            // Show the install prompt
             const result = await this.installPrompt.prompt();
-            
             console.log('Install prompt result:', result.outcome);
             
             if (result.outcome === 'accepted') {
                 console.log('User accepted install prompt');
+                this.showToast('Installing app...', 'success');
             } else {
                 console.log('User dismissed install prompt');
             }
             
         } catch (error) {
             console.error('Install prompt failed:', error);
+            this.showToast('Install failed. Try using browser menu instead.', 'error');
         } finally {
-            // Clear the saved prompt
             this.installPrompt = null;
+            this.hideInstallOption();
         }
     }
     
