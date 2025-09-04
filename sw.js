@@ -136,7 +136,7 @@ async function cacheFirstStrategy(request) {
         
         // Return offline page for navigation requests
         if (request.mode === 'navigate') {
-            return caches.match('/');
+            return caches.match('./');
         }
         
         throw error;
@@ -205,7 +205,7 @@ async function networkWithCacheFallbackStrategy(request) {
         
         // For navigation requests, return the main page
         if (request.mode === 'navigate') {
-            return caches.match('/');
+            return caches.match('./');
         }
         
         throw error;
