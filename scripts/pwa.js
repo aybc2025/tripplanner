@@ -707,6 +707,29 @@ export class PWAManager {
         }
     }
     
+    // Haptic feedback for mobile interactions
+    hapticFeedback(type = 'light') {
+        if (!navigator.vibrate) return;
+        
+        switch (type) {
+            case 'light':
+                navigator.vibrate(50);
+                break;
+            case 'medium':
+                navigator.vibrate(100);
+                break;
+            case 'heavy':
+                navigator.vibrate([100, 50, 100]);
+                break;
+            case 'success':
+                navigator.vibrate([50, 25, 50]);
+                break;
+            case 'error':
+                navigator.vibrate([100, 50, 100, 50, 100]);
+                break;
+        }
+    }
+    
     // Debug and diagnostics
     async generateDiagnosticReport() {
         const features = this.checkPWAFeatures();
