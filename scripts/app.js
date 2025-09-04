@@ -17,6 +17,7 @@ class TripPlannerApp {
         this.currentDate = new Date();
         this.activities = [];
         this.bankActivities = [];
+        this.currentEditingTrip = null;
         
         // DOM elements
         this.elements = {};
@@ -75,6 +76,8 @@ class TripPlannerApp {
             'menu-btn', 'activity-bank', 'bank-activities', 'bank-empty', 'add-activity-btn',
             'calendar-title', 'day-view-container', 'week-view-container', 'month-view-container',
             'trip-modal', 'close-trip-modal', 'trips-list', 'new-trip-btn',
+            'trip-edit-modal', 'close-trip-edit-modal', 'trip-form', 'trip-edit-title',
+            'trip-name', 'trip-start', 'trip-end', 'delete-trip-btn', 'cancel-trip-btn', 'save-trip-btn',
             'activity-modal', 'close-activity-modal', 'activity-form', 'delete-activity-btn',
             'cancel-activity-btn', 'save-activity-btn',
             'menu-modal', 'close-menu-modal', 'import-btn', 'export-btn', 'share-btn',
@@ -129,6 +132,20 @@ class TripPlannerApp {
             this.elements['new-trip-btn'].addEventListener('click', () => this.createNewTrip());
         }
         
+        // Trip edit modal
+        if (this.elements['close-trip-edit-modal']) {
+            this.elements['close-trip-edit-modal'].addEventListener('click', () => this.hideTripEditModal());
+        }
+        if (this.elements['cancel-trip-btn']) {
+            this.elements['cancel-trip-btn'].addEventListener('click', () => this.hideTripEditModal());
+        }
+        if (this.elements['trip-form']) {
+            this.elements['trip-form'].addEventListener('submit', (e) => this.handleTripSubmit(e));
+        }
+        if (this.elements['delete-trip-btn']) {
+            this.elements['delete-trip-btn'].addEventListener('click', () => this.deleteCurrentTrip());
+        }
+        
         // Activity management
         if (this.elements['add-activity-btn']) {
             this.elements['add-activity-btn'].addEventListener('click', () => this.showActivityModal());
@@ -174,7 +191,7 @@ class TripPlannerApp {
         }
         
         // Modal close on backdrop click
-        const modals = ['trip-modal', 'activity-modal', 'menu-modal'];
+        const modals = ['trip-modal', 'trip-edit-modal', 'activity-modal', 'menu-modal'];
         modals.forEach(modalId => {
             if (this.elements[modalId]) {
                 this.elements[modalId].addEventListener('click', (e) => {
@@ -296,35 +313,35 @@ class TripPlannerApp {
     }
     
     async renderCalendar() {
-    try {
-        // Update calendar title
-        const title = this.calendar.getDisplayTitle();
-        if (this.elements['calendar-title']) {
-            this.elements['calendar-title'].textContent = title;
+        try {
+            // Update calendar title
+            const title = this.calendar.getDisplayTitle();
+            if (this.elements['calendar-title']) {
+                this.elements['calendar-title'].textContent = title;
+            }
+            
+            // Render the current view
+            const calendarActivities = this.activities.filter(activity => activity.source === 'calendar');
+            await this.calendar.render(calendarActivities);
+            
+            // Setup drag and drop for ALL rendered activities (IMPORTANT FIX)
+            this.dragDrop.setupCalendarDropZones();
+            this.setupCalendarActivityDraggers(); // NEW LINE
+            
+        } catch (error) {
+            console.error('Failed to render calendar:', error);
+            this.showToast('Failed to update calendar', 'error');
         }
-        
-        // Render the current view
-        const calendarActivities = this.activities.filter(activity => activity.source === 'calendar');
-        await this.calendar.render(calendarActivities);
-        
-        // Setup drag and drop for ALL rendered activities (IMPORTANT FIX)
-        this.dragDrop.setupCalendarDropZones();
-        this.setupCalendarActivityDraggers(); // NEW LINE
-        
-    } catch (error) {
-        console.error('Failed to render calendar:', error);
-        this.showToast('Failed to update calendar', 'error');
     }
-}
-
-// הוסף פונקציה חדשה:
-setupCalendarActivityDraggers() {
-    // Setup draggers for all calendar activities
-    const calendarActivities = document.querySelectorAll('.calendar-activity');
-    calendarActivities.forEach(element => {
-        this.dragDrop.setupDragElement(element);
-    });
-}
+    
+    // הוסף פונקציה חדשה:
+    setupCalendarActivityDraggers() {
+        // Setup draggers for all calendar activities
+        const calendarActivities = document.querySelectorAll('.calendar-activity');
+        calendarActivities.forEach(element => {
+            this.dragDrop.setupDragElement(element);
+        });
+    }
     
     // Activity Bank Management
     renderActivityBank() {
@@ -449,14 +466,44 @@ setupCalendarActivityDraggers() {
         
         const dates = document.createElement('div');
         dates.className = 'trip-dates';
-        dates.textContent = `${trip.dateRange.start} - ${trip.dateRange.end}`;
+        
+        // Format dates nicely
+        const startDate = new Date(trip.dateRange.start).toLocaleDateString('he-IL');
+        const endDate = new Date(trip.dateRange.end).toLocaleDateString('he-IL');
+        dates.textContent = `${startDate} - ${endDate}`;
         
         info.appendChild(name);
         info.appendChild(dates);
         element.appendChild(info);
         
-        // Add click handler to switch trip
-        element.addEventListener('click', () => this.switchTrip(trip));
+        // Add action buttons
+        const actions = document.createElement('div');
+        actions.className = 'trip-item-actions';
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'trip-action-btn edit-btn';
+        editBtn.innerHTML = '✏️';
+        editBtn.title = 'עריכת טיול';
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent trip selection
+            this.showTripEditModal(trip);
+        });
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'trip-action-btn delete-btn';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'מחיקת טיול';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent trip selection
+            this.confirmDeleteTrip(trip);
+        });
+        
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+        element.appendChild(actions);
+        
+        // Add click handler to switch trip (only on the info area)
+        info.addEventListener('click', () => this.switchTrip(trip));
         
         return element;
     }
@@ -470,33 +517,244 @@ setupCalendarActivityDraggers() {
         this.showToast(`Switched to ${trip.name}`, 'success');
     }
     
-    async createNewTrip() {
-        const name = prompt('Enter trip name:');
-        if (!name) return;
+    createNewTrip() {
+        this.showTripEditModal();
+    }
+    
+    showTripEditModal(trip = null) {
+        if (!this.elements['trip-edit-modal']) return;
         
-        const startDate = prompt('Start date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-        if (!startDate) return;
+        this.currentEditingTrip = trip;
+        this.populateTripForm(trip);
+        this.elements['trip-edit-modal'].classList.remove('hidden');
         
-        const endDate = prompt('End date (YYYY-MM-DD):', 
-            new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        if (!endDate) return;
+        // Update modal title
+        if (this.elements['trip-edit-title']) {
+            this.elements['trip-edit-title'].textContent = trip ? 'עריכת טיול' : 'טיול חדש';
+        }
         
-        const newTrip = {
-            id: this.generateId(),
-            name: name.trim(),
-            dateRange: { start: startDate, end: endDate },
-            share: { mode: 'private', token: null, allowComments: false },
-            createdAt: new Date().toISOString(),
+        // Focus on name field
+        const nameField = this.elements['trip-name'];
+        if (nameField) {
+            setTimeout(() => nameField.focus(), 100);
+        }
+    }
+    
+    hideTripEditModal() {
+        this.hideModal('trip-edit-modal');
+        this.currentEditingTrip = null;
+        this.clearTripFormErrors();
+    }
+    
+    populateTripForm(trip) {
+        const form = this.elements['trip-form'];
+        if (!form) return;
+        
+        // Clear form and errors
+        form.reset();
+        this.clearTripFormErrors();
+        
+        if (trip) {
+            // Populate with trip data
+            if (this.elements['trip-name']) {
+                this.elements['trip-name'].value = trip.name || '';
+            }
+            if (this.elements['trip-start']) {
+                this.elements['trip-start'].value = trip.dateRange.start || '';
+            }
+            if (this.elements['trip-end']) {
+                this.elements['trip-end'].value = trip.dateRange.end || '';
+            }
+            
+            // Show delete button for existing trips
+            if (this.elements['delete-trip-btn']) {
+                this.elements['delete-trip-btn'].style.display = 'block';
+            }
+        } else {
+            // Hide delete button for new trips
+            if (this.elements['delete-trip-btn']) {
+                this.elements['delete-trip-btn'].style.display = 'none';
+            }
+            
+            // Set default dates (today + 7 days)
+            const today = new Date().toISOString().split('T')[0];
+            const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            
+            if (this.elements['trip-start']) {
+                this.elements['trip-start'].value = today;
+            }
+            if (this.elements['trip-end']) {
+                this.elements['trip-end'].value = nextWeek;
+            }
+        }
+    }
+    
+    async handleTripSubmit(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const tripData = Object.fromEntries(formData.entries());
+        
+        // Validation
+        const errors = this.validateTripForm(tripData);
+        if (errors.length > 0) {
+            this.displayTripFormErrors(errors);
+            return;
+        }
+        
+        // Create trip object
+        const trip = {
+            id: this.currentEditingTrip ? this.currentEditingTrip.id : this.generateId(),
+            name: tripData.name.trim(),
+            dateRange: {
+                start: tripData.startDate,
+                end: tripData.endDate
+            },
+            share: this.currentEditingTrip ? this.currentEditingTrip.share : {
+                mode: 'private',
+                token: null,
+                allowComments: false
+            },
+            createdAt: this.currentEditingTrip ? this.currentEditingTrip.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         
         try {
-            await this.db.saveTrip(newTrip);
-            await this.switchTrip(newTrip);
-            this.showToast(`Created ${newTrip.name}`, 'success');
+            await this.db.saveTrip(trip);
+            
+            // If this is a new trip or we're editing the current trip, switch to it
+            if (!this.currentEditingTrip || this.currentEditingTrip.id === this.currentTrip?.id) {
+                await this.switchTrip(trip);
+            }
+            
+            this.hideTripEditModal();
+            this.loadTripsInModal(); // Refresh the trips list
+            
+            const action = this.currentEditingTrip ? 'עודכן' : 'נוצר';
+            this.showToast(`הטיול "${trip.name}" ${action} בהצלחה`, 'success');
+            
         } catch (error) {
-            console.error('Failed to create trip:', error);
-            this.showToast('Failed to create trip', 'error');
+            console.error('Failed to save trip:', error);
+            this.showToast('שגיאה בשמירת הטיול', 'error');
+        }
+    }
+    
+    validateTripForm(tripData) {
+        const errors = [];
+        
+        if (!tripData.name || tripData.name.trim().length === 0) {
+            errors.push({ field: 'name', message: 'שם הטיול הוא שדה חובה' });
+        }
+        
+        if (!tripData.startDate) {
+            errors.push({ field: 'startDate', message: 'תאריך התחלה הוא שדה חובה' });
+        }
+        
+        if (!tripData.endDate) {
+            errors.push({ field: 'endDate', message: 'תאריך סיום הוא שדה חובה' });
+        }
+        
+        if (tripData.startDate && tripData.endDate) {
+            const startDate = new Date(tripData.startDate);
+            const endDate = new Date(tripData.endDate);
+            
+            if (endDate < startDate) {
+                errors.push({ field: 'endDate', message: 'תאריך הסיום חייב להיות אחרי תאריך ההתחלה' });
+            }
+        }
+        
+        return errors;
+    }
+    
+    displayTripFormErrors(errors) {
+        // Clear previous errors
+        this.clearTripFormErrors();
+        
+        errors.forEach(error => {
+            const fieldMap = {
+                'name': 'trip-name',
+                'startDate': 'trip-start',
+                'endDate': 'trip-end'
+            };
+            
+            const fieldId = fieldMap[error.field];
+            const fieldElement = document.getElementById(fieldId);
+            
+            if (fieldElement) {
+                const formGroup = fieldElement.closest('.form-group');
+                if (formGroup) {
+                    formGroup.classList.add('error');
+                    
+                    // Add error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'form-error';
+                    errorDiv.textContent = error.message;
+                    formGroup.appendChild(errorDiv);
+                }
+            }
+        });
+    }
+    
+    clearTripFormErrors() {
+        const formGroups = document.querySelectorAll('#trip-form .form-group');
+        formGroups.forEach(group => {
+            group.classList.remove('error');
+            const errorDiv = group.querySelector('.form-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+        });
+    }
+    
+    confirmDeleteTrip(trip) {
+        const message = `האם אתה בטוח שברצונך למחוק את הטיול "${trip.name}"?\n\nפעולה זו תמחק גם את כל הפעילויות בטיול ולא ניתן לבטלה.`;
+        
+        if (confirm(message)) {
+            this.deleteTrip(trip);
+        }
+    }
+    
+    async deleteTrip(trip) {
+        try {
+            await this.db.deleteTrip(trip.id);
+            
+            // If we deleted the current trip, switch to another trip or create a new one
+            if (this.currentTrip && this.currentTrip.id === trip.id) {
+                const remainingTrips = await this.db.getAllTrips();
+                
+                if (remainingTrips.length > 0) {
+                    await this.switchTrip(remainingTrips[0]);
+                } else {
+                    // Create a default trip if no trips remain
+                    const defaultTrip = {
+                        id: this.generateId(),
+                        name: 'הטיול שלי',
+                        dateRange: {
+                            start: new Date().toISOString().split('T')[0],
+                            end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                        },
+                        share: { mode: 'private', token: null, allowComments: false },
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    await this.db.saveTrip(defaultTrip);
+                    await this.switchTrip(defaultTrip);
+                }
+            }
+            
+            this.loadTripsInModal(); // Refresh the trips list
+            this.showToast(`הטיול "${trip.name}" נמחק`, 'success');
+            
+        } catch (error) {
+            console.error('Failed to delete trip:', error);
+            this.showToast('שגיאה במחיקת הטיול', 'error');
+        }
+    }
+    
+    deleteCurrentTrip() {
+        if (this.currentEditingTrip) {
+            this.confirmDeleteTrip(this.currentEditingTrip);
         }
     }
     
@@ -521,185 +779,185 @@ setupCalendarActivityDraggers() {
     }
     
     populateActivityForm(activity) {
-    const form = this.elements['activity-form'];
-    if (!form) return;
+        const form = this.elements['activity-form'];
+        if (!form) return;
+        
+        // Clear form
+        form.reset();
+        
+        // Debug logging
+        console.log('Populating form with activity:', activity);
+        
+        if (activity) {
+            // Populate with activity data - Fix field name mapping
+            const fieldMap = {
+                'title': 'activity-title',
+                'description': 'activity-description', 
+                'locationUrl': 'activity-location',  // Fix: HTML field is 'activity-location'
+                'openingHours': 'activity-hours',    // Fix: HTML field is 'activity-hours'
+                'notes': 'activity-notes'
+            };
+            
+            Object.entries(fieldMap).forEach(([activityField, inputId]) => {
+                const input = document.getElementById(inputId);
+                if (input && activity[activityField] !== undefined && activity[activityField] !== null) {
+                    console.log(`Setting ${inputId} = ${activity[activityField]}`);
+                    input.value = activity[activityField];
+                }
+            });
+            
+            // Handle datetime fields - FIX timezone conversion
+            if (activity.start) {
+                const startInput = document.getElementById('activity-start');
+                if (startInput) {
+                    // Convert UTC time back to local datetime-local format
+                    const startDate = new Date(activity.start);
+                    // Format: YYYY-MM-DDTHH:MM
+                    const year = startDate.getFullYear();
+                    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(startDate.getDate()).padStart(2, '0');
+                    const hours = String(startDate.getHours()).padStart(2, '0');
+                    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+                    const localStartString = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    
+                    console.log(`Setting start time: ${activity.start} -> ${localStartString}`);
+                    startInput.value = localStartString;
+                }
+            }
+            
+            if (activity.end) {
+                const endInput = document.getElementById('activity-end');
+                if (endInput) {
+                    // Convert UTC time back to local datetime-local format
+                    const endDate = new Date(activity.end);
+                    const year = endDate.getFullYear();
+                    const month = String(endDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(endDate.getDate()).padStart(2, '0');
+                    const hours = String(endDate.getHours()).padStart(2, '0');
+                    const minutes = String(endDate.getMinutes()).padStart(2, '0');
+                    const localEndString = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    
+                    console.log(`Setting end time: ${activity.end} -> ${localEndString}`);
+                    endInput.value = localEndString;
+                }
+            }
+            
+            // Handle tags
+            if (activity.tags && Array.isArray(activity.tags)) {
+                const tagsInput = document.getElementById('activity-tags');
+                if (tagsInput) {
+                    const tagsString = activity.tags.join(', ');
+                    console.log(`Setting tags: ${tagsString}`);
+                    tagsInput.value = tagsString;
+                }
+            }
+            
+            // Show delete button for existing activities
+            if (this.elements['delete-activity-btn']) {
+                this.elements['delete-activity-btn'].style.display = 'block';
+            }
+        } else {
+            console.log('Creating new activity - form cleared');
+            // Hide delete button for new activities
+            if (this.elements['delete-activity-btn']) {
+                this.elements['delete-activity-btn'].style.display = 'none';
+            }
+        }
+    }
     
-    // Clear form
-    form.reset();
-    
-    // Debug logging
-    console.log('Populating form with activity:', activity);
-    
-    if (activity) {
-        // Populate with activity data - Fix field name mapping
-        const fieldMap = {
-            'title': 'activity-title',
-            'description': 'activity-description', 
-            'locationUrl': 'activity-location',  // Fix: HTML field is 'activity-location'
-            'openingHours': 'activity-hours',    // Fix: HTML field is 'activity-hours'
-            'notes': 'activity-notes'
+    async handleActivitySubmit(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const activityData = Object.fromEntries(formData.entries());
+        
+        // Debug logging to see what we're getting from the form
+        console.log('Form data received:', activityData);
+        
+        // Process tags
+        if (activityData.tags) {
+            activityData.tags = activityData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        } else {
+            activityData.tags = [];
+        }
+        
+        // Create activity object
+        const activity = {
+            id: this.currentEditingActivity ? this.currentEditingActivity.id : this.generateId(),
+            tripId: this.currentTrip.id,
+            title: activityData.title || '',
+            description: activityData.description || '',
+            locationUrl: activityData.locationUrl || '',  // FIXED: use correct field name
+            openingHours: activityData.openingHours || '',    // FIXED: use correct field name
+            start: null,
+            end: null,
+            tags: activityData.tags,
+            notes: activityData.notes || '',
+            links: [],
+            attachments: [],
+            source: 'bank' // Default to bank, will update below
         };
         
-        Object.entries(fieldMap).forEach(([activityField, inputId]) => {
-            const input = document.getElementById(inputId);
-            if (input && activity[activityField] !== undefined && activity[activityField] !== null) {
-                console.log(`Setting ${inputId} = ${activity[activityField]}`);
-                input.value = activity[activityField];
-            }
-        });
-        
-        // Handle datetime fields - FIX timezone conversion
-if (activity.start) {
-    const startInput = document.getElementById('activity-start');
-    if (startInput) {
-        // Convert UTC time back to local datetime-local format
-        const startDate = new Date(activity.start);
-        // Format: YYYY-MM-DDTHH:MM
-        const year = startDate.getFullYear();
-        const month = String(startDate.getMonth() + 1).padStart(2, '0');
-        const day = String(startDate.getDate()).padStart(2, '0');
-        const hours = String(startDate.getHours()).padStart(2, '0');
-        const minutes = String(startDate.getMinutes()).padStart(2, '0');
-        const localStartString = `${year}-${month}-${day}T${hours}:${minutes}`;
-        
-        console.log(`Setting start time: ${activity.start} -> ${localStartString}`);
-        startInput.value = localStartString;
-    }
-}
-
-if (activity.end) {
-    const endInput = document.getElementById('activity-end');
-    if (endInput) {
-        // Convert UTC time back to local datetime-local format
-        const endDate = new Date(activity.end);
-        const year = endDate.getFullYear();
-        const month = String(endDate.getMonth() + 1).padStart(2, '0');
-        const day = String(endDate.getDate()).padStart(2, '0');
-        const hours = String(endDate.getHours()).padStart(2, '0');
-        const minutes = String(endDate.getMinutes()).padStart(2, '0');
-        const localEndString = `${year}-${month}-${day}T${hours}:${minutes}`;
-        
-        console.log(`Setting end time: ${activity.end} -> ${localEndString}`);
-        endInput.value = localEndString;
-    }
-}
-        
-        // Handle tags
-        if (activity.tags && Array.isArray(activity.tags)) {
-            const tagsInput = document.getElementById('activity-tags');
-            if (tagsInput) {
-                const tagsString = activity.tags.join(', ');
-                console.log(`Setting tags: ${tagsString}`);
-                tagsInput.value = tagsString;
+        // Handle datetime fields - FIX timezone conversion properly
+        if (activityData.start) {
+            // datetime-local gives us a string like "2025-10-14T09:30"
+            // We need to treat this as local time, not convert it
+            const localDateStr = activityData.start;
+            if (localDateStr.length === 16) { // "YYYY-MM-DDTHH:MM" format
+                activity.start = new Date(localDateStr).toISOString();
             }
         }
         
-        // Show delete button for existing activities
-        if (this.elements['delete-activity-btn']) {
-            this.elements['delete-activity-btn'].style.display = 'block';
+        if (activityData.end) {
+            // datetime-local gives us a string like "2025-10-14T10:30"
+            const localDateStr = activityData.end;
+            if (localDateStr.length === 16) { // "YYYY-MM-DDTHH:MM" format
+                activity.end = new Date(localDateStr).toISOString();
+            }
         }
-    } else {
-        console.log('Creating new activity - form cleared');
-        // Hide delete button for new activities
-        if (this.elements['delete-activity-btn']) {
-            this.elements['delete-activity-btn'].style.display = 'none';
-        }
-    }
-}
-    
-   async handleActivitySubmit(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const activityData = Object.fromEntries(formData.entries());
-    
-    // Debug logging to see what we're getting from the form
-    console.log('Form data received:', activityData);
-    
-    // Process tags
-    if (activityData.tags) {
-        activityData.tags = activityData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-    } else {
-        activityData.tags = [];
-    }
-    
-    // Create activity object
-    const activity = {
-        id: this.currentEditingActivity ? this.currentEditingActivity.id : this.generateId(),
-        tripId: this.currentTrip.id,
-        title: activityData.title || '',
-        description: activityData.description || '',
-        locationUrl: activityData.locationUrl || '',  // FIXED: use correct field name
-        openingHours: activityData.openingHours || '',    // FIXED: use correct field name
-        start: null,
-        end: null,
-        tags: activityData.tags,
-        notes: activityData.notes || '',
-        links: [],
-        attachments: [],
-        source: 'bank' // Default to bank, will update below
-    };
-    
-    // Handle datetime fields - FIX timezone conversion properly
-if (activityData.start) {
-    // datetime-local gives us a string like "2025-10-14T09:30"
-    // We need to treat this as local time, not convert it
-    const localDateStr = activityData.start;
-    if (localDateStr.length === 16) { // "YYYY-MM-DDTHH:MM" format
-        activity.start = new Date(localDateStr).toISOString();
-    }
-}
-
-if (activityData.end) {
-    // datetime-local gives us a string like "2025-10-14T10:30"
-    const localDateStr = activityData.end;
-    if (localDateStr.length === 16) { // "YYYY-MM-DDTHH:MM" format
-        activity.end = new Date(localDateStr).toISOString();
-    }
-}
-    
-    // Smart source detection: if has date/time → calendar, otherwise → bank
-    if (this.currentEditingActivity) {
-        // Keep existing source for edited activities
-        activity.source = this.currentEditingActivity.source;
-    } else {
-        // For new activities: if has both start and end time → calendar, otherwise → bank
-        activity.source = (activity.start && activity.end) ? 'calendar' : 'bank';
-    }
-    
-    // Debug logging to see final activity object
-    console.log('Final activity object:', activity);
-    
-    try {
-        await this.db.saveActivity(activity);
         
-        // Update local activities array
+        // Smart source detection: if has date/time → calendar, otherwise → bank
         if (this.currentEditingActivity) {
-            const index = this.activities.findIndex(a => a.id === activity.id);
-            if (index !== -1) {
-                this.activities[index] = activity;
+            // Keep existing source for edited activities
+            activity.source = this.currentEditingActivity.source;
+        } else {
+            // For new activities: if has both start and end time → calendar, otherwise → bank
+            activity.source = (activity.start && activity.end) ? 'calendar' : 'bank';
+        }
+        
+        // Debug logging to see final activity object
+        console.log('Final activity object:', activity);
+        
+        try {
+            await this.db.saveActivity(activity);
+            
+            // Update local activities array
+            if (this.currentEditingActivity) {
+                const index = this.activities.findIndex(a => a.id === activity.id);
+                if (index !== -1) {
+                    this.activities[index] = activity;
+                } else {
+                    this.activities.push(activity);
+                }
             } else {
                 this.activities.push(activity);
             }
-        } else {
-            this.activities.push(activity);
+            
+            // Update bankActivities array if needed
+            this.bankActivities = this.activities.filter(a => a.source === 'bank');
+            
+            // Refresh UI
+            this.renderActivityBank();
+            await this.renderCalendar();
+            
+            this.hideActivityModal();
+            this.showToast('Activity saved successfully', 'success');
+            
+        } catch (error) {
+            console.error('Failed to save activity:', error);
+            this.showToast('Failed to save activity', 'error');
         }
-        
-        // Update bankActivities array if needed
-        this.bankActivities = this.activities.filter(a => a.source === 'bank');
-        
-        // Refresh UI
-        this.renderActivityBank();
-        await this.renderCalendar();
-        
-        this.hideActivityModal();
-        this.showToast('Activity saved successfully', 'success');
-        
-    } catch (error) {
-        console.error('Failed to save activity:', error);
-        this.showToast('Failed to save activity', 'error');
     }
-}
     
     async deleteCurrentActivity() {
         if (!this.currentEditingActivity) return;
@@ -957,6 +1215,16 @@ if (activityData.end) {
         if (this.elements[modalId]) {
             this.elements[modalId].classList.add('hidden');
         }
+        
+        // Special cleanup for specific modals
+        if (modalId === 'trip-edit-modal') {
+            this.currentEditingTrip = null;
+            this.clearTripFormErrors();
+        }
+        
+        if (modalId === 'activity-modal') {
+            this.currentEditingActivity = null;
+        }
     }
     
     generateId() {
@@ -1031,9 +1299,12 @@ if (activityData.end) {
                 break;
             case 'escape':
                 // Close any open modal
-                const openModal = document.querySelector('.modal:not(.hidden)');
+                const openModals = ['trip-modal', 'trip-edit-modal', 'activity-modal', 'menu-modal'];
+                const openModal = openModals.find(modalId => 
+                    this.elements[modalId] && !this.elements[modalId].classList.contains('hidden')
+                );
                 if (openModal) {
-                    openModal.classList.add('hidden');
+                    this.hideModal(openModal);
                 }
                 break;
         }
@@ -1102,7 +1373,7 @@ if (activityData.end) {
             this.showToast('Failed to move activity', 'error');
         }
     }
-} // End of TripPlannerApp class
+}
 
 // Initialize app when script loads
 const app = new TripPlannerApp();
