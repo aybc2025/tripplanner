@@ -999,25 +999,25 @@ class TripPlannerApp {
         }
         
         // Smart source detection: if has date/time → calendar, otherwise → bank
-if (this.currentEditingActivity) {
-    // For edited activities: check if they should change source based on new data
-    const hadDateTime = this.currentEditingActivity.start && this.currentEditingActivity.end;
-    const hasDateTime = activity.start && activity.end;
-    
-    if (hadDateTime && !hasDateTime) {
-        // Had time before, now doesn't - move to bank
-        activity.source = 'bank';
-    } else if (!hadDateTime && hasDateTime) {
-        // Didn't have time before, now does - move to calendar
-        activity.source = 'calendar';
-    } else {
-        // Keep existing source
-        activity.source = this.currentEditingActivity.source;
-    }
-} else {
-    // For new activities: if has both start and end time → calendar, otherwise → bank
-    activity.source = (activity.start && activity.end) ? 'calendar' : 'bank';
-}
+        if (this.currentEditingActivity) {
+            // For edited activities: check if they should change source based on new data
+            const hadDateTime = this.currentEditingActivity.start && this.currentEditingActivity.end;
+            const hasDateTime = activity.start && activity.end;
+            
+            if (hadDateTime && !hasDateTime) {
+                // Had time before, now doesn't - move to bank
+                activity.source = 'bank';
+            } else if (!hadDateTime && hasDateTime) {
+                // Didn't have time before, now does - move to calendar
+                activity.source = 'calendar';
+            } else {
+                // Keep existing source
+                activity.source = this.currentEditingActivity.source;
+            }
+        } else {
+            // For new activities: if has both start and end time → calendar, otherwise → bank
+            activity.source = (activity.start && activity.end) ? 'calendar' : 'bank';
+        }
         
         // Debug logging to see final activity object
         console.log('Final activity object:', activity);
@@ -1441,59 +1441,61 @@ if (this.currentEditingActivity) {
         }
     }
     
-   async moveActivityToCalendar(activityId, date, time = null) {
-    const activity = this.activities.find(a => a.id === activityId);
-    if (!activity) return;
-    
-    console.log(`Moving activity "${activity.title}" to date: ${date}, time: ${time}`);
-    
-    activity.source = 'calendar';
-    
-    if (time) {
-        const [hours, minutes] = time.split(':').map(Number);
-        const startDate = this.calendar.parseDateFromStorage(date);
-        console.log('Parsed start date (before setting time):', startDate);
-        startDate.setHours(hours, minutes, 0, 0);
-        console.log('Start date (after setting time):', startDate);
+    async moveActivityToCalendar(activityId, date, time = null) {
+        const activity = this.activities.find(a => a.id === activityId);
+        if (!activity) return;
         
-        const endDate = new Date(startDate);
-        endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
+        console.log(`Moving activity "${activity.title}" to date: ${date}, time: ${time}`);
         
-        activity.start = startDate.toISOString();
-        activity.end = endDate.toISOString();
-    } else {
-        // All day event - use sensible default time based on current time or 9 AM
-        const startDate = this.calendar.parseDateFromStorage(date);
-        console.log('Parsed start date (all day):', startDate);
+        activity.source = 'calendar';
         
-        const now = new Date();
-        const defaultHour = now.getHours() >= 9 && now.getHours() <= 20 ? now.getHours() : 9;
+        if (time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            const startDate = this.calendar.parseDateFromStorage(date);
+            console.log('Parsed start date (before setting time):', startDate);
+            startDate.setHours(hours, minutes, 0, 0);
+            console.log('Start date (after setting time):', startDate);
+            
+            const endDate = new Date(startDate);
+            endDate.setHours(hours + 1, minutes, 0, 0); // Default 1 hour duration
+            
+            activity.start = startDate.toISOString();
+            activity.end = endDate.toISOString();
+        } else {
+            // All day event - use sensible default time based on current time or 9 AM
+            const startDate = this.calendar.parseDateFromStorage(date);
+            console.log('Parsed start date (all day):', startDate);
+            
+            const now = new Date();
+            const defaultHour = now.getHours() >= 9 && now.getHours() <= 20 ? now.getHours() : 9;
+            
+            startDate.setHours(defaultHour, 0, 0, 0);
+            const endDate = new Date(startDate);
+            endDate.setHours(defaultHour + 1, 0, 0, 0); // Default 1 hour
+            
+            activity.start = startDate.toISOString();
+            activity.end = endDate.toISOString();
+        }
         
-        startDate.setHours(defaultHour, 0, 0, 0);
-        const endDate = new Date(startDate);
-        endDate.setHours(defaultHour + 1, 0, 0, 0); // Default 1 hour
+        console.log('Final activity start:', activity.start);
+        console.log('Final activity end:', activity.end);
         
-        activity.start = startDate.toISOString();
-        activity.end = endDate.toISOString();
-    }
-    
-    console.log('Final activity start:', activity.start);
-    console.log('Final activity end:', activity.end);
-    
-    try {
-        await this.db.saveActivity(activity);
-        await this.loadTripActivities();
-        await this.renderCalendar();
-        
-        // Show helpful message
-        const timeStr = time ? `at ${time}` : `at ${new Date(activity.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-        this.showToast(`"${activity.title}" scheduled for ${date} ${timeStr}`, 'success');
-        
-    } catch (error) {
-        console.error('Failed to move activity to calendar:', error);
-        this.showToast('Failed to move activity', 'error');
+        try {
+            await this.db.saveActivity(activity);
+            await this.loadTripActivities();
+            await this.renderCalendar();
+            
+            // Show helpful message
+            const timeStr = time ? `at ${time}` : `at ${new Date(activity.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+            this.showToast(`"${activity.title}" scheduled for ${date} ${timeStr}`, 'success');
+            
+        } catch (error) {
+            console.error('Failed to move activity to calendar:', error);
+            this.showToast('Failed to move activity', 'error');
+        }
     }
 }
+
 // Initialize app when script loads
 const app = new TripPlannerApp();
 
