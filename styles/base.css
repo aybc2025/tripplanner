@@ -628,7 +628,7 @@ html, body {
 }
 
 .drop-zone.drag-over::after {
-    content: 'שחרר כאן'; /* הוספה */
+    content: 'Drop here'; /* הוספה */
     position: absolute;
     inset: 0;
     border: 2px dashed var(--primary-color);
