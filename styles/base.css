@@ -99,6 +99,7 @@ html, body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* מנע גלילה של הקונטיינר הראשי */
 }
 
 /* Header */
@@ -264,6 +265,7 @@ html, body {
     display: flex;
     flex: 1;
     min-height: 0;
+    overflow: hidden; /* מנע גלילה ברמה זו */
 }
 
 /* Activity Bank */
