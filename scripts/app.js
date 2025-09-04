@@ -20,6 +20,10 @@ class TripPlannerApp {
         this.currentEditingTrip = null;
         this.currentEditingActivity = null;
         
+        // Mobile state
+        this.isMobile = window.innerWidth <= 768;
+        this.activityBankOpen = false;
+        
         // DOM elements
         this.elements = {};
         
@@ -82,7 +86,8 @@ class TripPlannerApp {
             'activity-modal', 'close-activity-modal', 'activity-form', 'delete-activity-btn',
             'cancel-activity-btn', 'save-activity-btn',
             'menu-modal', 'close-menu-modal', 'import-btn', 'export-btn', 'share-btn',
-            'sync-btn', 'settings-btn', 'file-input', 'toast-container'
+            'sync-btn', 'settings-btn', 'file-input', 'toast-container',
+            'mobile-menu-btn', 'mobile-fab', 'mobile-overlay'
         ];
         
         elementIds.forEach(id => {
@@ -205,6 +210,20 @@ class TripPlannerApp {
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+        
+        // Mobile functionality
+        if (this.elements['mobile-menu-btn']) {
+            this.elements['mobile-menu-btn'].addEventListener('click', () => this.toggleActivityBank());
+        }
+        if (this.elements['mobile-fab']) {
+            this.elements['mobile-fab'].addEventListener('click', () => this.showActivityModal());
+        }
+        if (this.elements['mobile-overlay']) {
+            this.elements['mobile-overlay'].addEventListener('click', () => this.closeActivityBank());
+        }
+        
+        // Handle window resize for mobile detection
+        window.addEventListener('resize', () => this.handleResize());
     }
     
     async loadInitialData() {
@@ -268,6 +287,63 @@ class TripPlannerApp {
         if (this.elements['app']) {
             this.elements['app'].classList.remove('hidden');
         }
+    }
+    
+    // Mobile Management
+    handleResize() {
+        const wasMobile = this.isMobile;
+        this.isMobile = window.innerWidth <= 768;
+        
+        // If switched from mobile to desktop, close activity bank
+        if (wasMobile && !this.isMobile) {
+            this.closeActivityBank();
+        }
+    }
+    
+    toggleActivityBank() {
+        if (this.activityBankOpen) {
+            this.closeActivityBank();
+        } else {
+            this.openActivityBank();
+        }
+    }
+    
+    openActivityBank() {
+        if (!this.elements['activity-bank'] || !this.elements['mobile-overlay'] || !this.elements['mobile-menu-btn']) return;
+        
+        this.activityBankOpen = true;
+        this.elements['activity-bank'].classList.add('open');
+        this.elements['mobile-overlay'].style.display = 'block';
+        this.elements['mobile-menu-btn'].classList.add('open');
+        
+        // Add overlay active class after display
+        setTimeout(() => {
+            if (this.elements['mobile-overlay']) {
+                this.elements['mobile-overlay'].classList.add('active');
+            }
+        }, 10);
+        
+        // Prevent body scroll when sidebar is open
+        document.body.style.overflow = 'hidden';
+    }
+    
+    closeActivityBank() {
+        if (!this.elements['activity-bank'] || !this.elements['mobile-overlay'] || !this.elements['mobile-menu-btn']) return;
+        
+        this.activityBankOpen = false;
+        this.elements['activity-bank'].classList.remove('open');
+        this.elements['mobile-overlay'].classList.remove('active');
+        this.elements['mobile-menu-btn'].classList.remove('open');
+        
+        // Hide overlay after transition
+        setTimeout(() => {
+            if (this.elements['mobile-overlay']) {
+                this.elements['mobile-overlay'].style.display = 'none';
+            }
+        }, 300);
+        
+        // Restore body scroll
+        document.body.style.overflow = '';
     }
     
     // View Management
@@ -410,6 +486,10 @@ class TripPlannerApp {
         element.addEventListener('click', (e) => {
             if (!e.target.closest('.dragging')) {
                 this.showActivityModal(activity);
+                // Auto-close activity bank on mobile after selecting activity
+                if (this.isMobile && this.activityBankOpen) {
+                    this.closeActivityBank();
+                }
             }
         });
         
@@ -1257,6 +1337,11 @@ class TripPlannerApp {
         
         this.elements['toast-container'].appendChild(toast);
         
+        // Add haptic feedback for mobile
+        if (this.pwa && this.pwa.hapticFeedback) {
+            this.pwa.hapticFeedback(type === 'success' ? 'success' : type === 'error' ? 'error' : 'light');
+        }
+        
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
@@ -1317,6 +1402,9 @@ class TripPlannerApp {
                 );
                 if (openModal) {
                     this.hideModal(openModal);
+                } else if (this.isMobile && this.activityBankOpen) {
+                    // Close activity bank on mobile if open
+                    this.closeActivityBank();
                 }
                 break;
         }
