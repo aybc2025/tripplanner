@@ -151,18 +151,16 @@ export class CalendarManager {
         slotElement.className = 'time-slot';
         
         if (isDropZone) {
-            slotElement.classList.add('drop-zone');
-            slotElement.dataset.date = this.formatDateForStorage(this.currentDate);
-            slotElement.dataset.time = timeSlot.time;
-            
-            // Add mobile-specific styling
-            if (this.isMobile) {
-                slotElement.style.minHeight = '50px'; // Larger touch targets
-                slotElement.classList.add('mobile-drop-zone');
-            }
-        
-            // Show abbreviated time labels on mobile to save space
-            } else {
+    slotElement.classList.add('drop-zone');
+    slotElement.dataset.date = this.formatDateForStorage(this.currentDate);
+    slotElement.dataset.time = timeSlot.time;
+    
+    // Add mobile-specific styling
+    if (this.isMobile) {
+        slotElement.style.minHeight = '50px';
+        slotElement.classList.add('mobile-drop-zone');
+    }
+} else {
     // Always show all time labels
     slotElement.textContent = timeSlot.display;
 }
