@@ -1273,6 +1273,7 @@ class TripPlannerApp {
         }
     }
 
+    // PDF Export with Hebrew Support
     async exportTripToPDF() {
         if (!this.currentTrip) {
             this.showToast('No trip selected', 'error');
@@ -1289,47 +1290,28 @@ class TripPlannerApp {
             
             this.showToast('Generating PDF...', 'info');
 
-            // Dynamically load jsPDF
-            await this.loadJsPDF();
-
-            // Create PDF document
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
+            // Create HTML content for PDF
+            const htmlContent = await this.generateTripHTML();
             
-            // Get trip data
-            const tripActivities = await this.db.getActivitiesByTrip(this.currentTrip.id);
-            const calendarActivities = tripActivities.filter(a => a.source === 'calendar');
-            const bankActivities = tripActivities.filter(a => a.source === 'bank');
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
             
-            // Group activities by date
-            const activitiesByDate = this.groupActivitiesByDate(calendarActivities);
-            const sortedDates = Object.keys(activitiesByDate).sort();
+            // Wait for content to load then trigger print
+            printWindow.onload = () => {
+                setTimeout(() => {
+                    printWindow.print();
+                    // Close the window after printing starts (optional)
+                    // printWindow.close();
+                }, 500);
+            };
 
-            // Page 1: Title Page
-            this.addTitlePage(doc);
-            
-            // Add pages for each day
-            for (const date of sortedDates) {
-                doc.addPage();
-                const activities = activitiesByDate[date];
-                this.addDayPage(doc, date, activities);
-            }
-
-            // Add Activities Bank page if there are bank activities
-            if (bankActivities.length > 0) {
-                doc.addPage();
-                this.addBankPage(doc, bankActivities);
-            }
-
-            // Save PDF
-            const fileName = `${this.currentTrip.name.replace(/\s+/g, '_')}_${this.formatDateForFile(new Date())}.pdf`;
-            doc.save(fileName);
-
-            this.showToast('PDF exported successfully!', 'success');
+            this.showToast('PDF print dialog opened!', 'success');
 
         } catch (error) {
             console.error('PDF export failed:', error);
-            this.showToast('PDF export failed', 'error');
+            this.showToast('PDF export failed: ' + error.message, 'error');
 
         } finally {
             // Remove loading state
@@ -1341,24 +1323,462 @@ class TripPlannerApp {
         }
     }
 
-    async loadJsPDF() {
-        // Check if jsPDF is already loaded
-        if (window.jspdf) return;
+    async generateTripHTML() {
+        // Get trip data
+        const tripActivities = await this.db.getActivitiesByTrip(this.currentTrip.id);
+        const calendarActivities = tripActivities.filter(a => a.source === 'calendar');
+        const bankActivities = tripActivities.filter(a => a.source === 'bank');
+        
+        // Group activities by date
+        const activitiesByDate = this.groupActivitiesByDate(calendarActivities);
+        const sortedDates = Object.keys(activitiesByDate).sort();
 
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            script.onload = () => {
-                console.log('jsPDF loaded successfully');
-                resolve();
-            };
-            script.onerror = () => {
-                reject(new Error('Failed to load jsPDF'));
-            };
-            document.head.appendChild(script);
-        });
+        // Generate HTML
+        const html = `
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${this.escapeHtml(this.currentTrip.name)} - Trip Plan</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+            font-size: 14px;
+            direction: rtl;
+        }
+        
+        /* Print styles */
+        @media print {
+            body { 
+                margin: 0;
+                font-size: 12px;
+            }
+            .page-break { 
+                page-break-before: always; 
+            }
+            .no-print { 
+                display: none; 
+            }
+            h1, h2, h3 {
+                page-break-after: avoid;
+            }
+            .activity-item {
+                page-break-inside: avoid;
+            }
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Title Page */
+        .title-page {
+            text-align: center;
+            margin-bottom: 60px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .trip-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1976d2;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .trip-dates {
+            font-size: 24px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .trip-summary {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1976d2;
+            display: block;
+        }
+        
+        /* Day Pages */
+        .day-page {
+            margin-bottom: 40px;
+        }
+        
+        .day-header {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .day-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .day-date {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        /* Activities */
+        .activities-list {
+            space-y: 15px;
+        }
+        
+        .activity-item {
+            background: white;
+            border: 2px solid #e3f2fd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        
+        .activity-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .activity-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1976d2;
+            margin: 0;
+        }
+        
+        .activity-time {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .activity-description {
+            color: #555;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .activity-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .detail-icon {
+            font-size: 16px;
+        }
+        
+        .activity-tags {
+            margin-top: 15px;
+        }
+        
+        .tag {
+            display: inline-block;
+            background: #f0f0f0;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin: 2px;
+        }
+        
+        .activity-notes {
+            background: #fffbf0;
+            border-left: 4px solid #ff9800;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+        }
+        
+        /* Bank Page */
+        .bank-page {
+            margin-top: 40px;
+        }
+        
+        .bank-header {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .bank-item {
+            background: #fff8e1;
+            border: 2px solid #ffcc02;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .bank-item .activity-title {
+            color: #e65100;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 40px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        /* Hebrew text alignment */
+        .hebrew {
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .english {
+            direction: ltr;
+            text-align: left;
+        }
+        
+        /* Empty state */
+        .empty-day {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 40px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Title Page -->
+        <div class="title-page">
+            <h1 class="trip-title ${this.isHebrewText(this.currentTrip.name) ? 'hebrew' : 'english'}">
+                ${this.escapeHtml(this.currentTrip.name)}
+            </h1>
+            <div class="trip-dates">
+                ${this.formatDisplayDate(this.currentTrip.dateRange.start)} - 
+                ${this.formatDisplayDate(this.currentTrip.dateRange.end)}
+            </div>
+            
+            <div class="trip-summary">
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">${this.getTripDays()}</span>
+                        <div>ימים</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">${calendarActivities.length}</span>
+                        <div>פעילויות מתוכננות</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">${bankActivities.length}</span>
+                        <div>אפשרויות נוספות</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                נוצר ב-${new Date().toLocaleDateString('he-IL')} | Trip Planner
+            </div>
+        </div>
+
+        ${sortedDates.length > 0 ? '<div class="page-break"></div>' : ''}
+
+        <!-- Daily Pages -->
+        ${sortedDates.map(date => this.generateDayHTML(date, activitiesByDate[date])).join('<div class="page-break"></div>')}
+
+        ${bankActivities.length > 0 ? '<div class="page-break"></div>' + this.generateBankHTML(bankActivities) : ''}
+    </div>
+</body>
+</html>`;
+
+        return html;
     }
 
+    generateDayHTML(date, activities) {
+        const dayName = this.getDayName(date);
+        const formattedDate = this.formatDateForDisplay(date);
+        
+        return `
+            <div class="day-page">
+                <div class="day-header">
+                    <div class="day-title">${dayName}</div>
+                    <div class="day-date">${formattedDate}</div>
+                </div>
+                
+                <div class="activities-list">
+                    ${activities.length === 0 ? 
+                        '<div class="empty-day">אין פעילויות מתוכננות ליום זה</div>' :
+                        activities.map(activity => this.generateActivityHTML(activity)).join('')
+                    }
+                </div>
+            </div>`;
+    }
+
+    generateActivityHTML(activity) {
+        const isHebrewTitle = this.isHebrewText(activity.title);
+        const isHebrewDesc = this.isHebrewText(activity.description);
+        const isHebrewNotes = this.isHebrewText(activity.notes);
+        
+        const timeString = activity.start && activity.end ? 
+            `${new Date(activity.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} - 
+             ${new Date(activity.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : '';
+
+        return `
+            <div class="activity-item">
+                <div class="activity-header">
+                    <h3 class="activity-title ${isHebrewTitle ? 'hebrew' : 'english'}">
+                        ${this.escapeHtml(activity.title)}
+                    </h3>
+                    ${timeString ? `<div class="activity-time">⏰ ${timeString}</div>` : ''}
+                </div>
+                
+                ${activity.description ? 
+                    `<div class="activity-description ${isHebrewDesc ? 'hebrew' : 'english'}">
+                        ${this.escapeHtml(activity.description)}
+                    </div>` : ''
+                }
+                
+                <div class="activity-details">
+                    ${activity.locationUrl ? 
+                        `<div class="detail-item">
+                            <span class="detail-icon">🌐</span>
+                            <span>${this.escapeHtml(activity.locationUrl)}</span>
+                        </div>` : ''
+                    }
+                    ${activity.openingHours ? 
+                        `<div class="detail-item">
+                            <span class="detail-icon">🕐</span>
+                            <span>${this.escapeHtml(activity.openingHours)}</span>
+                        </div>` : ''
+                    }
+                </div>
+                
+                ${activity.tags && activity.tags.length > 0 ? 
+                    `<div class="activity-tags">
+                        ${activity.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                    </div>` : ''
+                }
+                
+                ${activity.notes ? 
+                    `<div class="activity-notes ${isHebrewNotes ? 'hebrew' : 'english'}">
+                        <strong>הערות:</strong> ${this.escapeHtml(activity.notes)}
+                    </div>` : ''
+                }
+            </div>`;
+    }
+
+    generateBankHTML(bankActivities) {
+        return `
+            <div class="bank-page">
+                <div class="bank-header">
+                    <div class="day-title">💡 פעילויות נוספות לשיקול</div>
+                    <div class="day-date">בחרו מהפעילויות הבאות והוסיפו לתוכנית</div>
+                </div>
+                
+                <div class="activities-list">
+                    ${bankActivities.map((activity, index) => `
+                        <div class="bank-item">
+                            <div class="activity-header">
+                                <h3 class="activity-title ${this.isHebrewText(activity.title) ? 'hebrew' : 'english'}">
+                                    ${index + 1}. ${this.escapeHtml(activity.title)}
+                                </h3>
+                            </div>
+                            
+                            ${activity.description ? 
+                                `<div class="activity-description ${this.isHebrewText(activity.description) ? 'hebrew' : 'english'}">
+                                    ${this.escapeHtml(activity.description)}
+                                </div>` : ''
+                            }
+                            
+                            <div class="activity-details">
+                                ${activity.locationUrl ? 
+                                    `<div class="detail-item">
+                                        <span class="detail-icon">🌐</span>
+                                        <span>${this.escapeHtml(activity.locationUrl)}</span>
+                                    </div>` : ''
+                                }
+                                ${activity.openingHours ? 
+                                    `<div class="detail-item">
+                                        <span class="detail-icon">🕐</span>
+                                        <span>${this.escapeHtml(activity.openingHours)}</span>
+                                    </div>` : ''
+                                }
+                            </div>
+                            
+                            ${activity.tags && activity.tags.length > 0 ? 
+                                `<div class="activity-tags">
+                                    ${activity.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                                </div>` : ''
+                            }
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+    }
+
+    // PDF Helper Functions
     groupActivitiesByDate(activities) {
         const grouped = {};
         
@@ -1384,285 +1804,6 @@ class TripPlannerApp {
         return date.toISOString().split('T')[0];
     }
 
-    addTitlePage(doc) {
-        const pageWidth = doc.internal.pageSize.getWidth();
-        let y = 30;
-
-        // Trip name (large title)
-        doc.setFontSize(28);
-        doc.setTextColor(25, 118, 210); // Primary color
-        doc.text(this.currentTrip.name, pageWidth / 2, y, { align: 'center' });
-        y += 25;
-
-        // Trip dates
-        doc.setFontSize(16);
-        doc.setTextColor(95, 99, 104); // Secondary color
-        const startDate = this.formatDisplayDate(this.currentTrip.dateRange.start);
-        const endDate = this.formatDisplayDate(this.currentTrip.dateRange.end);
-        doc.text(`${startDate} - ${endDate}`, pageWidth / 2, y, { align: 'center' });
-        y += 15;
-
-        // Generated date
-        doc.setFontSize(12);
-        doc.setTextColor(95, 99, 104);
-        const generatedDate = new Date().toLocaleDateString('en-US', { 
-            year: 'numeric', month: 'long', day: 'numeric' 
-        });
-        doc.text(`Generated on ${generatedDate}`, pageWidth / 2, y, { align: 'center' });
-        y += 30;
-
-        // Trip summary box
-        const calendarActivities = this.activities.filter(a => a.source === 'calendar');
-        const tripDays = this.getTripDays();
-        const totalActivities = calendarActivities.length;
-
-        doc.setFontSize(14);
-        doc.setTextColor(32, 33, 36);
-        
-        // Summary box background
-        const boxY = y;
-        const boxHeight = 50;
-        doc.setFillColor(245, 245, 245);
-        doc.roundedRect(30, boxY, pageWidth - 60, boxHeight, 5, 5, 'F');
-        
-        y += 20;
-        doc.text(`📅 ${tripDays} days planned`, pageWidth / 2, y, { align: 'center' });
-        y += 10;
-        doc.text(`🎯 ${totalActivities} activities scheduled`, pageWidth / 2, y, { align: 'center' });
-        y += 10;
-        doc.text(`📍 Ready for adventure!`, pageWidth / 2, y, { align: 'center' });
-
-        // Footer message
-        y = 250;
-        doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Generated by Trip Planner`, pageWidth / 2, y, { align: 'center' });
-    }
-
-    addDayPage(doc, date, activities) {
-        const pageWidth = doc.internal.pageSize.getWidth();
-        let y = 25;
-
-        // Date header
-        doc.setFontSize(22);
-        doc.setTextColor(25, 118, 210);
-        const formattedDate = this.formatDateForDisplay(date);
-        const dayName = this.getDayName(date);
-        doc.text(`${dayName}, ${formattedDate}`, 20, y);
-        y += 15;
-
-        // Underline
-        doc.setDrawColor(25, 118, 210);
-        doc.setLineWidth(0.5);
-        doc.line(20, y, pageWidth - 20, y);
-        y += 20;
-
-        // Activities
-        if (activities.length === 0) {
-            doc.setFontSize(14);
-            doc.setTextColor(150, 150, 150);
-            doc.text('No activities planned for this day', 20, y);
-            return;
-        }
-
-        activities.forEach(activity => {
-            y = this.addActivityToPage(doc, activity, y, pageWidth);
-            y += 10; // Space between activities
-            
-            // Check if we need a new page
-            if (y > 250) {
-                doc.addPage();
-                y = 25;
-            }
-        });
-    }
-
-    addActivityToPage(doc, activity, startY, pageWidth) {
-        let y = startY;
-        const leftMargin = 20;
-        const rightMargin = pageWidth - 20;
-
-        // Time block (if available)
-        if (activity.start && activity.end) {
-            doc.setFontSize(12);
-            doc.setTextColor(95, 99, 104);
-            const startTime = new Date(activity.start).toLocaleTimeString('en-US', { 
-                hour: 'numeric', minute: '2-digit', hour12: true 
-            });
-            const endTime = new Date(activity.end).toLocaleTimeString('en-US', { 
-                hour: 'numeric', minute: '2-digit', hour12: true 
-            });
-            doc.text(`⏰ ${startTime} - ${endTime}`, leftMargin, y);
-            y += 8;
-        }
-
-        // Activity title
-        doc.setFontSize(16);
-        doc.setTextColor(32, 33, 36);
-        doc.text(`📍 ${activity.title}`, leftMargin, y);
-        y += 8;
-
-        // Location/URL
-        if (activity.locationUrl) {
-            doc.setFontSize(10);
-            doc.setTextColor(25, 118, 210);
-            const truncatedUrl = activity.locationUrl.length > 60 ? 
-                activity.locationUrl.substring(0, 60) + '...' : activity.locationUrl;
-            doc.text(`🌐 ${truncatedUrl}`, leftMargin + 5, y);
-            y += 6;
-        }
-
-        // Opening hours
-        if (activity.openingHours) {
-            doc.setFontSize(10);
-            doc.setTextColor(95, 99, 104);
-            doc.text(`🕐 ${activity.openingHours}`, leftMargin + 5, y);
-            y += 6;
-        }
-
-        // Description
-        if (activity.description) {
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
-            const wrappedDesc = doc.splitTextToSize(activity.description, rightMargin - leftMargin - 10);
-            doc.text(`📝 ${wrappedDesc[0]}`, leftMargin + 5, y);
-            if (wrappedDesc.length > 1) {
-                y += 5;
-                for (let i = 1; i < Math.min(wrappedDesc.length, 3); i++) {
-                    doc.text(`   ${wrappedDesc[i]}`, leftMargin + 5, y);
-                    y += 5;
-                }
-            }
-            y += 3;
-        }
-
-        // Tags
-        if (activity.tags && activity.tags.length > 0) {
-            doc.setFontSize(9);
-            doc.setTextColor(95, 99, 104);
-            const tagsText = `🏷️ ${activity.tags.slice(0, 5).join(', ')}`;
-            doc.text(tagsText, leftMargin + 5, y);
-            y += 6;
-        }
-
-        // Notes
-        if (activity.notes) {
-            doc.setFontSize(9);
-            doc.setTextColor(80, 80, 80);
-            const wrappedNotes = doc.splitTextToSize(activity.notes, rightMargin - leftMargin - 10);
-            doc.text(`💡 ${wrappedNotes[0]}`, leftMargin + 5, y);
-            if (wrappedNotes.length > 1) {
-                y += 4;
-                doc.text(`   ${wrappedNotes[1]}`, leftMargin + 5, y);
-            }
-            y += 6;
-        }
-
-        // Separator line
-        doc.setDrawColor(230, 230, 230);
-        doc.setLineWidth(0.2);
-        doc.line(leftMargin, y + 2, rightMargin, y + 2);
-
-        return y + 5;
-    }
-
-    addBankPage(doc, bankActivities) {
-        const pageWidth = doc.internal.pageSize.getWidth();
-        let y = 25;
-
-        // Page header
-        doc.setFontSize(22);
-        doc.setTextColor(25, 118, 210);
-        doc.text('💡 Additional Activities to Consider', 20, y);
-        y += 15;
-
-        // Subtitle
-        doc.setFontSize(12);
-        doc.setTextColor(95, 99, 104);
-        doc.text('Pick from these activities and add them to your schedule!', 20, y);
-        y += 10;
-
-        // Underline
-        doc.setDrawColor(25, 118, 210);
-        doc.setLineWidth(0.5);
-        doc.line(20, y, pageWidth - 20, y);
-        y += 20;
-
-        // Bank activities
-        bankActivities.forEach((activity, index) => {
-            y = this.addBankActivityToPage(doc, activity, y, pageWidth, index + 1);
-            y += 8;
-            
-            // Check if we need a new page
-            if (y > 250) {
-                doc.addPage();
-                y = 25;
-            }
-        });
-    }
-
-    addBankActivityToPage(doc, activity, startY, pageWidth, number) {
-        let y = startY;
-        const leftMargin = 20;
-
-        // Activity number and title
-        doc.setFontSize(14);
-        doc.setTextColor(32, 33, 36);
-        doc.text(`${number}. ${activity.title}`, leftMargin, y);
-        y += 8;
-
-        // Description
-        if (activity.description) {
-            doc.setFontSize(10);
-            doc.setTextColor(60, 60, 60);
-            const wrappedDesc = doc.splitTextToSize(activity.description, pageWidth - leftMargin - 20);
-            doc.text(wrappedDesc[0], leftMargin + 5, y);
-            if (wrappedDesc.length > 1) {
-                y += 5;
-                doc.text(wrappedDesc[1], leftMargin + 5, y);
-            }
-            y += 6;
-        }
-
-        // Location/URL
-        if (activity.locationUrl) {
-            doc.setFontSize(9);
-            doc.setTextColor(25, 118, 210);
-            const truncatedUrl = activity.locationUrl.length > 70 ? 
-                activity.locationUrl.substring(0, 70) + '...' : activity.locationUrl;
-            doc.text(`🌐 ${truncatedUrl}`, leftMargin + 5, y);
-            y += 5;
-        }
-
-        // Opening hours
-        if (activity.openingHours) {
-            doc.setFontSize(9);
-            doc.setTextColor(95, 99, 104);
-            doc.text(`🕐 ${activity.openingHours}`, leftMargin + 5, y);
-            y += 5;
-        }
-
-        // Tags
-        if (activity.tags && activity.tags.length > 0) {
-            doc.setFontSize(9);
-            doc.setTextColor(95, 99, 104);
-            const tagsText = `🏷️ ${activity.tags.join(', ')}`;
-            doc.text(tagsText, leftMargin + 5, y);
-            y += 5;
-        }
-
-        // Notes
-        if (activity.notes) {
-            doc.setFontSize(9);
-            doc.setTextColor(80, 80, 80);
-            const wrappedNotes = doc.splitTextToSize(activity.notes, pageWidth - leftMargin - 20);
-            doc.text(`💡 ${wrappedNotes[0]}`, leftMargin + 5, y);
-            y += 5;
-        }
-
-        return y;
-    }
-
     getTripDays() {
         if (!this.currentTrip || !this.currentTrip.dateRange) return 0;
         
@@ -1675,17 +1816,30 @@ class TripPlannerApp {
     }
 
     formatDateForDisplay(dateString) {
-        const date = new Date(dateString + 'T00:00:00');
-        return date.toLocaleDateString('en-US', { 
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return date.toLocaleDateString('he-IL', { 
+            year: 'numeric',
             month: 'long', 
-            day: 'numeric', 
-            year: 'numeric' 
+            day: 'numeric'
         });
     }
 
     getDayName(dateString) {
         const date = new Date(dateString + 'T00:00:00');
-        return date.toLocaleDateString('en-US', { weekday: 'long' });
+        return date.toLocaleDateString('he-IL', { weekday: 'long' });
+    }
+
+    isHebrewText(text) {
+        if (!text) return false;
+        return /[\u0590-\u05FF]/.test(text);
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     // Sharing
@@ -1720,7 +1874,6 @@ class TripPlannerApp {
         }
     }
     
-    // Sync placeholder
     // Sync and Authentication
     async toggleSync() {
         if (this.firebase.isAuthenticated()) {
