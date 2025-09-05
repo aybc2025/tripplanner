@@ -473,8 +473,6 @@ html, body {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
     position: relative;
-    min-height: 1200px;
-    height: 60px;
     flex-shrink: 0;
     box-sizing: border-box;
 }
