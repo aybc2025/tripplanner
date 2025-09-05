@@ -1281,9 +1281,15 @@ class TripPlannerApp {
         return;
     }
 
-    try {
-        // Show loading message
-        this.showToast('Generating PDF...', 'info');
+   try {
+    // Show loading state
+    const pdfBtn = this.elements['export-pdf-btn'];
+    if (pdfBtn) {
+        pdfBtn.classList.add('loading');
+        pdfBtn.textContent = '📄 Generating PDF...';
+    }
+    
+    this.showToast('Generating PDF...', 'info');
 
         // Dynamically load jsPDF
         await this.loadJsPDF();
@@ -1326,8 +1332,15 @@ class TripPlannerApp {
     } catch (error) {
         console.error('PDF export failed:', error);
         this.showToast('PDF export failed', 'error');
+
+       } finally {
+        // Remove loading state
+        const pdfBtn = this.elements['export-pdf-btn'];
+        if (pdfBtn) {
+            pdfBtn.classList.remove('loading');
+            pdfBtn.textContent = '📄 Export to PDF';
+        }
     }
-}
 
     async loadJsPDF() {
     // Check if jsPDF is already loaded
