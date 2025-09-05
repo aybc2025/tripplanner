@@ -3,6 +3,7 @@ import { TripDatabase } from './db.js';
 import { CalendarManager } from './calendar.js';
 import { DragDropManager } from './dnd.js';
 import { PWAManager } from './pwa.js';
+import { firebaseService } from './firebase-config.js';
 
 class TripPlannerApp {
     constructor() {
@@ -10,6 +11,7 @@ class TripPlannerApp {
         this.calendar = new CalendarManager();
         this.dragDrop = new DragDropManager();
         this.pwa = new PWAManager();
+        this.firebase = firebaseService;
         
         // App state
         this.currentTrip = null;
@@ -19,6 +21,9 @@ class TripPlannerApp {
         this.bankActivities = [];
         this.currentEditingTrip = null;
         this.currentEditingActivity = null;
+        this.isAuthenticated = false;
+        
+        // Mobile state
         
         // Mobile state
         this.isMobile = window.innerWidth <= 768;
@@ -1300,8 +1305,252 @@ class TripPlannerApp {
     }
     
     // Sync placeholder
+    // Sync and Authentication
     async toggleSync() {
-        this.showToast('Cloud sync coming soon!', 'warning');
+        if (this.firebase.isAuthenticated()) {
+            // User is signed in, show sync options
+            this.showSyncModal();
+        } else {
+            // User not signed in, show auth modal
+            this.showAuthModal();
+        }
+    }
+    
+    showAuthModal() {
+        // Create auth modal if it doesn't exist
+        let modal = document.getElementById('auth-modal');
+        if (!modal) {
+            modal = this.createAuthModal();
+            document.body.appendChild(modal);
+        }
+        modal.classList.remove('hidden');
+    }
+    
+    createAuthModal() {
+        const modal = document.createElement('div');
+        modal.id = 'auth-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Cloud Sync</h3>
+                    <button class="close-btn" onclick="this.closest('.modal').classList.add('hidden')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Sign in to sync your trips across devices and backup to the cloud.</p>
+                    
+                    <div id="auth-forms">
+                        <div id="signin-form" class="auth-form">
+                            <h4>Sign In</h4>
+                            <form>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="signin-email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <input type="password" id="signin-password" required>
+                                </div>
+                                <button type="submit" class="primary-btn">Sign In</button>
+                                <button type="button" class="secondary-btn" onclick="document.getElementById('signin-form').style.display='none'; document.getElementById('signup-form').style.display='block';">Create Account</button>
+                            </form>
+                        </div>
+                        
+                        <div id="signup-form" class="auth-form" style="display: none;">
+                            <h4>Create Account</h4>
+                            <form>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="signup-email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <input type="password" id="signup-password" required minlength="6">
+                                </div>
+                                <button type="submit" class="primary-btn">Create Account</button>
+                                <button type="button" class="secondary-btn" onclick="document.getElementById('signup-form').style.display='none'; document.getElementById('signin-form').style.display='block';">Back to Sign In</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        const signinForm = modal.querySelector('#signin-form form');
+        const signupForm = modal.querySelector('#signup-form form');
+        
+        signinForm.addEventListener('submit', (e) => this.handleSignIn(e));
+        signupForm.addEventListener('submit', (e) => this.handleSignUp(e));
+        
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        return modal;
+    }
+    
+    async handleSignIn(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('signin-email').value;
+        const password = document.getElementById('signin-password').value;
+        
+        try {
+            await this.firebase.signIn(email, password);
+            this.isAuthenticated = true;
+            document.getElementById('auth-modal').classList.add('hidden');
+            this.showToast('Signed in successfully!', 'success');
+            
+            // Offer to sync local data
+            if (confirm('Sync your local trips to the cloud?')) {
+                await this.syncLocalToCloud();
+            }
+            
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+    
+    async handleSignUp(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        
+        try {
+            await this.firebase.signUp(email, password);
+            this.isAuthenticated = true;
+            document.getElementById('auth-modal').classList.add('hidden');
+            this.showToast('Account created successfully!', 'success');
+            
+            // Automatically sync local data for new users
+            await this.syncLocalToCloud();
+            
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+    
+    showSyncModal() {
+        // Create sync modal if it doesn't exist
+        let modal = document.getElementById('sync-modal');
+        if (!modal) {
+            modal = this.createSyncModal();
+            document.body.appendChild(modal);
+        }
+        modal.classList.remove('hidden');
+    }
+    
+    createSyncModal() {
+        const modal = document.createElement('div');
+        modal.id = 'sync-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Cloud Sync</h3>
+                    <button class="close-btn" onclick="this.closest('.modal').classList.add('hidden')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Signed in as: <strong>${this.firebase.getCurrentUser()?.email}</strong></p>
+                    
+                    <div class="sync-actions">
+                        <button class="primary-btn" onclick="window.app.syncLocalToCloud()">
+                            ⬆️ Upload Local Data to Cloud
+                        </button>
+                        
+                        <button class="secondary-btn" onclick="window.app.syncCloudToLocal()">
+                            ⬇️ Download Cloud Data Locally
+                        </button>
+                        
+                        <button class="secondary-btn" onclick="window.app.signOut()">
+                            🚪 Sign Out
+                        </button>
+                    </div>
+                    
+                    <div class="sync-info">
+                        <small>
+                            <strong>Upload:</strong> Adds your local trips to the cloud<br>
+                            <strong>Download:</strong> Replaces local data with cloud data<br>
+                            Auto-sync will be enabled after first sync.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        return modal;
+    }
+    
+    async syncLocalToCloud() {
+        try {
+            const allTrips = await this.db.getAllTrips();
+            const allActivities = await this.db.performTransaction('activities', 'readonly', (store) => store.getAll());
+            
+            await this.firebase.syncToCloud({
+                trips: allTrips,
+                activities: allActivities
+            });
+            
+            this.showToast('Local data synced to cloud!', 'success');
+            document.getElementById('sync-modal')?.classList.add('hidden');
+            
+        } catch (error) {
+            console.error('Sync to cloud failed:', error);
+            this.showToast('Sync failed: ' + error.message, 'error');
+        }
+    }
+    
+    async syncCloudToLocal() {
+        try {
+            const cloudData = await this.firebase.syncFromCloud();
+            
+            // Clear local data and import cloud data
+            await this.db.clearAllData();
+            
+            // Import trips
+            for (const trip of cloudData.trips) {
+                await this.db.saveTrip(trip);
+            }
+            
+            // Import activities
+            if (cloudData.activities.length > 0) {
+                await this.db.bulkSaveActivities(cloudData.activities);
+            }
+            
+            // Reload current data
+            await this.loadTripActivities();
+            await this.renderCalendar();
+            
+            this.showToast('Cloud data synced locally!', 'success');
+            document.getElementById('sync-modal')?.classList.add('hidden');
+            
+        } catch (error) {
+            console.error('Sync from cloud failed:', error);
+            this.showToast('Sync failed: ' + error.message, 'error');
+        }
+    }
+    
+    async signOut() {
+        try {
+            await this.firebase.signOut();
+            this.isAuthenticated = false;
+            this.showToast('Signed out successfully', 'success');
+            document.getElementById('sync-modal')?.classList.add('hidden');
+        } catch (error) {
+            this.showToast('Sign out failed', 'error');
+        }
     }
     
     // Utility Methods
