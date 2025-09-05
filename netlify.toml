@@ -17,6 +17,9 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # Privacy headers - Prevent search engine indexing
+    X-Robots-Tag = "noindex, nofollow, noarchive, nosnippet"
     
     # PWA headers
     X-UA-Compatible = "IE=edge"
