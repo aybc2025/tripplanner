@@ -2063,3 +2063,47 @@ html, body {
         padding: var(--spacing-sm) var(--spacing-lg);
     }
 }
+
+/* PDF Export Button Styling */
+#export-pdf-btn {
+    background: linear-gradient(135deg, #e53935, #d32f2f);
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+#export-pdf-btn:hover {
+    background: linear-gradient(135deg, #d32f2f, #c62828);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3);
+}
+
+#export-pdf-btn:active {
+    transform: translateY(0);
+}
+
+/* PDF Loading state */
+#export-pdf-btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+#export-pdf-btn.loading::after {
+    content: " 🔄";
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mobile PDF button adjustments */
+@media (max-width: 768px) {
+    #export-pdf-btn {
+        font-size: var(--font-size-base);
+        padding: var(--spacing-md);
+        min-height: var(--touch-target-min);
+    }
+}
