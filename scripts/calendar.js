@@ -160,7 +160,7 @@ export class CalendarManager {
                 slotElement.style.minHeight = '50px'; // Larger touch targets
                 slotElement.classList.add('mobile-drop-zone');
             }
-        } else {
+        
             // Show abbreviated time labels on mobile to save space
             } else {
     // Always show all time labels
