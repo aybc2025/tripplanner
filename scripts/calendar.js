@@ -162,13 +162,10 @@ export class CalendarManager {
             }
         } else {
             // Show abbreviated time labels on mobile to save space
-            if (this.isMobile && timeSlot.hour % 2 !== 0 && timeSlot.hour !== 0) {
-                // Only show every other hour on mobile (but always show midnight)
-                slotElement.textContent = '';
             } else {
-                slotElement.textContent = timeSlot.display;
-            }
-        }
+    // Always show all time labels
+    slotElement.textContent = timeSlot.display;
+}
         
         container.appendChild(slotElement);
     });
