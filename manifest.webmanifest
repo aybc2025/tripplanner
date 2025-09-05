@@ -1,7 +1,7 @@
 {
-  "name": "Trip Planner",
-  "short_name": "TripPlanner",
-  "description": "Plan multi-day trips with calendar views and activity management",
+  "name": "Travel Organizer",
+  "short_name": "TravelOrg", 
+  "description": "Personal travel planning assistant",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
