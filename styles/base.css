@@ -1593,6 +1593,126 @@ html, body {
     margin-top: var(--spacing-xs);
 }
 
+/* Authentication and Sync Modals */
+.auth-form {
+    margin: var(--spacing-lg) 0;
+}
+
+.auth-form h4 {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.sync-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin: var(--spacing-lg) 0;
+}
+
+.sync-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.sync-info {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
+}
+
+.sync-info small {
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+/* Auth form styling */
+#auth-forms {
+    margin-top: var(--spacing-lg);
+}
+
+.auth-form form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.auth-form .form-group {
+    margin-bottom: var(--spacing-sm);
+}
+
+.auth-form .form-group label {
+    margin-bottom: var(--spacing-xs);
+}
+
+.auth-form .primary-btn,
+.auth-form .secondary-btn {
+    width: 100%;
+    margin-top: var(--spacing-sm);
+}
+
+/* User indicator in header */
+.user-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: rgba(25, 118, 210, 0.1);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    color: var(--primary-color);
+}
+
+.user-indicator.signed-out {
+    background: var(--secondary-color);
+    color: var(--text-secondary);
+}
+
+/* Sync status indicator */
+.sync-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+}
+
+.sync-status.synced {
+    background: rgba(19, 115, 51, 0.1);
+    color: var(--success);
+}
+
+.sync-status.syncing {
+    background: rgba(249, 171, 0, 0.1);
+    color: var(--warning);
+}
+
+.sync-status.offline {
+    background: rgba(95, 99, 104, 0.1);
+    color: var(--text-secondary);
+}
+
+/* Mobile auth modal adjustments */
+@media (max-width: 768px) {
+    .auth-form {
+        margin: var(--spacing-md) 0;
+    }
+    
+    .sync-actions {
+        gap: var(--spacing-sm);
+    }
+    
+    .sync-actions .btn {
+        padding: var(--spacing-md);
+        font-size: var(--font-size-base);
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     :root {
