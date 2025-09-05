@@ -281,17 +281,13 @@ export class FirebaseService {
         }
         
         try {
-            const q = query(
-                collection(this.db, 'activities'),
-                where('userId', '==', this.currentUser.uid),
-                where('tripId', '==', tripId)
-            );
-            
-            const querySnapshot = await getDocs(q);
+            // Get activities first, then delete them
+            const activities = await this.getActivitiesByTrip(tripId);
             const deletePromises = [];
             
-            querySnapshot.forEach((doc) => {
-                deletePromises.push(deleteDoc(doc.ref));
+            activities.forEach((activity) => {
+                const firebaseId = activity.id.replace('firebase_', '');
+                deletePromises.push(deleteDoc(doc(this.db, 'activities', firebaseId)));
             });
             
             await Promise.all(deletePromises);
