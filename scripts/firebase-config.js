@@ -332,9 +332,11 @@ export class FirebaseService {
         try {
             console.log('Starting sync from cloud...');
             
+            // Get trips (already uses simple query)
             const trips = await this.getTrips();
             const allActivities = [];
             
+            // Get all activities for all trips
             for (const trip of trips) {
                 const activities = await this.getActivitiesByTrip(trip.id);
                 allActivities.push(...activities);
