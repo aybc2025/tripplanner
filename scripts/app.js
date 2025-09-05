@@ -24,8 +24,6 @@ class TripPlannerApp {
         this.isAuthenticated = false;
         
         // Mobile state
-        
-        // Mobile state
         this.isMobile = window.innerWidth <= 768;
         this.activityBankOpen = false;
         
@@ -91,7 +89,7 @@ class TripPlannerApp {
             'activity-modal', 'close-activity-modal', 'activity-form', 'delete-activity-btn',
             'cancel-activity-btn', 'save-activity-btn',
             'menu-modal', 'close-menu-modal', 'import-btn', 'export-btn', 'share-btn',
-            'sync-btn', 'settings-btn', 'export-pdf-btn', 'file-input', 'toast-container',,
+            'sync-btn', 'settings-btn', 'export-pdf-btn', 'file-input', 'toast-container',
             'mobile-menu-btn', 'mobile-fab', 'mobile-overlay'
         ];
         
@@ -190,8 +188,8 @@ class TripPlannerApp {
             this.elements['export-btn'].addEventListener('click', () => this.exportData());
         }
         if (this.elements['export-pdf-btn']) {
-    this.elements['export-pdf-btn'].addEventListener('click', () => this.exportTripToPDF());
-}
+            this.elements['export-pdf-btn'].addEventListener('click', () => this.exportTripToPDF());
+        }
         if (this.elements['file-input']) {
             this.elements['file-input'].addEventListener('change', (e) => this.handleFileImport(e));
         }
@@ -1276,419 +1274,419 @@ class TripPlannerApp {
     }
 
     async exportTripToPDF() {
-    if (!this.currentTrip) {
-        this.showToast('No trip selected', 'error');
-        return;
-    }
-
-   try {
-    // Show loading state
-    const pdfBtn = this.elements['export-pdf-btn'];
-    if (pdfBtn) {
-        pdfBtn.classList.add('loading');
-        pdfBtn.textContent = '📄 Generating PDF...';
-    }
-    
-    this.showToast('Generating PDF...', 'info');
-
-        // Dynamically load jsPDF
-        await this.loadJsPDF();
-
-        // Create PDF document
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-        
-        // Get trip data
-        const tripActivities = await this.db.getActivitiesByTrip(this.currentTrip.id);
-        const calendarActivities = tripActivities.filter(a => a.source === 'calendar');
-        const bankActivities = tripActivities.filter(a => a.source === 'bank');
-        
-        // Group activities by date
-        const activitiesByDate = this.groupActivitiesByDate(calendarActivities);
-        const sortedDates = Object.keys(activitiesByDate).sort();
-
-        // Page 1: Title Page
-        this.addTitlePage(doc);
-        
-        // Add pages for each day
-        for (const date of sortedDates) {
-            doc.addPage();
-            const activities = activitiesByDate[date];
-            this.addDayPage(doc, date, activities);
+        if (!this.currentTrip) {
+            this.showToast('No trip selected', 'error');
+            return;
         }
 
-        // Add Activities Bank page if there are bank activities
-        if (bankActivities.length > 0) {
-            doc.addPage();
-            this.addBankPage(doc, bankActivities);
-        }
+        try {
+            // Show loading state
+            const pdfBtn = this.elements['export-pdf-btn'];
+            if (pdfBtn) {
+                pdfBtn.classList.add('loading');
+                pdfBtn.textContent = '📄 Generating PDF...';
+            }
+            
+            this.showToast('Generating PDF...', 'info');
 
-        // Save PDF
-        const fileName = `${this.currentTrip.name.replace(/\s+/g, '_')}_${this.formatDateForFile(new Date())}.pdf`;
-        doc.save(fileName);
+            // Dynamically load jsPDF
+            await this.loadJsPDF();
 
-        this.showToast('PDF exported successfully!', 'success');
+            // Create PDF document
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            
+            // Get trip data
+            const tripActivities = await this.db.getActivitiesByTrip(this.currentTrip.id);
+            const calendarActivities = tripActivities.filter(a => a.source === 'calendar');
+            const bankActivities = tripActivities.filter(a => a.source === 'bank');
+            
+            // Group activities by date
+            const activitiesByDate = this.groupActivitiesByDate(calendarActivities);
+            const sortedDates = Object.keys(activitiesByDate).sort();
 
-    } catch (error) {
-        console.error('PDF export failed:', error);
-        this.showToast('PDF export failed', 'error');
+            // Page 1: Title Page
+            this.addTitlePage(doc);
+            
+            // Add pages for each day
+            for (const date of sortedDates) {
+                doc.addPage();
+                const activities = activitiesByDate[date];
+                this.addDayPage(doc, date, activities);
+            }
 
-       } finally {
-        // Remove loading state
-        const pdfBtn = this.elements['export-pdf-btn'];
-        if (pdfBtn) {
-            pdfBtn.classList.remove('loading');
-            pdfBtn.textContent = '📄 Export to PDF';
+            // Add Activities Bank page if there are bank activities
+            if (bankActivities.length > 0) {
+                doc.addPage();
+                this.addBankPage(doc, bankActivities);
+            }
+
+            // Save PDF
+            const fileName = `${this.currentTrip.name.replace(/\s+/g, '_')}_${this.formatDateForFile(new Date())}.pdf`;
+            doc.save(fileName);
+
+            this.showToast('PDF exported successfully!', 'success');
+
+        } catch (error) {
+            console.error('PDF export failed:', error);
+            this.showToast('PDF export failed', 'error');
+
+        } finally {
+            // Remove loading state
+            const pdfBtn = this.elements['export-pdf-btn'];
+            if (pdfBtn) {
+                pdfBtn.classList.remove('loading');
+                pdfBtn.textContent = '📄 Export to PDF';
+            }
         }
     }
 
     async loadJsPDF() {
-    // Check if jsPDF is already loaded
-    if (window.jspdf) return;
+        // Check if jsPDF is already loaded
+        if (window.jspdf) return;
 
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        script.onload = () => {
-            console.log('jsPDF loaded successfully');
-            resolve();
-        };
-        script.onerror = () => {
-            reject(new Error('Failed to load jsPDF'));
-        };
-        document.head.appendChild(script);
-    });
-}
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = () => {
+                console.log('jsPDF loaded successfully');
+                resolve();
+            };
+            script.onerror = () => {
+                reject(new Error('Failed to load jsPDF'));
+            };
+            document.head.appendChild(script);
+        });
+    }
 
-groupActivitiesByDate(activities) {
-    const grouped = {};
-    
-    activities.forEach(activity => {
-        if (!activity.start) return;
+    groupActivitiesByDate(activities) {
+        const grouped = {};
         
-        const date = activity.start.split('T')[0]; // Get YYYY-MM-DD
-        if (!grouped[date]) {
-            grouped[date] = [];
-        }
-        grouped[date].push(activity);
-    });
+        activities.forEach(activity => {
+            if (!activity.start) return;
+            
+            const date = activity.start.split('T')[0]; // Get YYYY-MM-DD
+            if (!grouped[date]) {
+                grouped[date] = [];
+            }
+            grouped[date].push(activity);
+        });
 
-    // Sort activities within each day by start time
-    Object.keys(grouped).forEach(date => {
-        grouped[date].sort((a, b) => new Date(a.start) - new Date(b.start));
-    });
+        // Sort activities within each day by start time
+        Object.keys(grouped).forEach(date => {
+            grouped[date].sort((a, b) => new Date(a.start) - new Date(b.start));
+        });
 
-    return grouped;
-}
+        return grouped;
+    }
 
-formatDateForFile(date) {
-    return date.toISOString().split('T')[0];
-}
+    formatDateForFile(date) {
+        return date.toISOString().split('T')[0];
+    }
 
     addTitlePage(doc) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 30;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        let y = 30;
 
-    // Trip name (large title)
-    doc.setFontSize(28);
-    doc.setTextColor(25, 118, 210); // Primary color
-    doc.text(this.currentTrip.name, pageWidth / 2, y, { align: 'center' });
-    y += 25;
+        // Trip name (large title)
+        doc.setFontSize(28);
+        doc.setTextColor(25, 118, 210); // Primary color
+        doc.text(this.currentTrip.name, pageWidth / 2, y, { align: 'center' });
+        y += 25;
 
-    // Trip dates
-    doc.setFontSize(16);
-    doc.setTextColor(95, 99, 104); // Secondary color
-    const startDate = this.formatDisplayDate(this.currentTrip.dateRange.start);
-    const endDate = this.formatDisplayDate(this.currentTrip.dateRange.end);
-    doc.text(`${startDate} - ${endDate}`, pageWidth / 2, y, { align: 'center' });
-    y += 15;
+        // Trip dates
+        doc.setFontSize(16);
+        doc.setTextColor(95, 99, 104); // Secondary color
+        const startDate = this.formatDisplayDate(this.currentTrip.dateRange.start);
+        const endDate = this.formatDisplayDate(this.currentTrip.dateRange.end);
+        doc.text(`${startDate} - ${endDate}`, pageWidth / 2, y, { align: 'center' });
+        y += 15;
 
-    // Generated date
-    doc.setFontSize(12);
-    doc.setTextColor(95, 99, 104);
-    const generatedDate = new Date().toLocaleDateString('en-US', { 
-        year: 'numeric', month: 'long', day: 'numeric' 
-    });
-    doc.text(`Generated on ${generatedDate}`, pageWidth / 2, y, { align: 'center' });
-    y += 30;
-
-    // Trip summary box
-    const calendarActivities = this.activities.filter(a => a.source === 'calendar');
-    const tripDays = this.getTripDays();
-    const totalActivities = calendarActivities.length;
-
-    doc.setFontSize(14);
-    doc.setTextColor(32, 33, 36);
-    
-    // Summary box background
-    const boxY = y;
-    const boxHeight = 50;
-    doc.setFillColor(245, 245, 245);
-    doc.roundedRect(30, boxY, pageWidth - 60, boxHeight, 5, 5, 'F');
-    
-    y += 20;
-    doc.text(`📅 ${tripDays} days planned`, pageWidth / 2, y, { align: 'center' });
-    y += 10;
-    doc.text(`🎯 ${totalActivities} activities scheduled`, pageWidth / 2, y, { align: 'center' });
-    y += 10;
-    doc.text(`📍 Ready for adventure!`, pageWidth / 2, y, { align: 'center' });
-
-    // Footer message
-    y = 250;
-    doc.setFontSize(10);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Generated by Trip Planner`, pageWidth / 2, y, { align: 'center' });
-}
-
-addDayPage(doc, date, activities) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 25;
-
-    // Date header
-    doc.setFontSize(22);
-    doc.setTextColor(25, 118, 210);
-    const formattedDate = this.formatDateForDisplay(date);
-    const dayName = this.getDayName(date);
-    doc.text(`${dayName}, ${formattedDate}`, 20, y);
-    y += 15;
-
-    // Underline
-    doc.setDrawColor(25, 118, 210);
-    doc.setLineWidth(0.5);
-    doc.line(20, y, pageWidth - 20, y);
-    y += 20;
-
-    // Activities
-    if (activities.length === 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(150, 150, 150);
-        doc.text('No activities planned for this day', 20, y);
-        return;
-    }
-
-    activities.forEach(activity => {
-        y = this.addActivityToPage(doc, activity, y, pageWidth);
-        y += 10; // Space between activities
-        
-        // Check if we need a new page
-        if (y > 250) {
-            doc.addPage();
-            y = 25;
-        }
-    });
-}
-
-addActivityToPage(doc, activity, startY, pageWidth) {
-    let y = startY;
-    const leftMargin = 20;
-    const rightMargin = pageWidth - 20;
-
-    // Time block (if available)
-    if (activity.start && activity.end) {
+        // Generated date
         doc.setFontSize(12);
         doc.setTextColor(95, 99, 104);
-        const startTime = new Date(activity.start).toLocaleTimeString('en-US', { 
-            hour: 'numeric', minute: '2-digit', hour12: true 
+        const generatedDate = new Date().toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'long', day: 'numeric' 
         });
-        const endTime = new Date(activity.end).toLocaleTimeString('en-US', { 
-            hour: 'numeric', minute: '2-digit', hour12: true 
-        });
-        doc.text(`⏰ ${startTime} - ${endTime}`, leftMargin, y);
-        y += 8;
-    }
+        doc.text(`Generated on ${generatedDate}`, pageWidth / 2, y, { align: 'center' });
+        y += 30;
 
-    // Activity title
-    doc.setFontSize(16);
-    doc.setTextColor(32, 33, 36);
-    doc.text(`📍 ${activity.title}`, leftMargin, y);
-    y += 8;
+        // Trip summary box
+        const calendarActivities = this.activities.filter(a => a.source === 'calendar');
+        const tripDays = this.getTripDays();
+        const totalActivities = calendarActivities.length;
 
-    // Location/URL
-    if (activity.locationUrl) {
-        doc.setFontSize(10);
-        doc.setTextColor(25, 118, 210);
-        const truncatedUrl = activity.locationUrl.length > 60 ? 
-            activity.locationUrl.substring(0, 60) + '...' : activity.locationUrl;
-        doc.text(`🌐 ${truncatedUrl}`, leftMargin + 5, y);
-        y += 6;
-    }
-
-    // Opening hours
-    if (activity.openingHours) {
-        doc.setFontSize(10);
-        doc.setTextColor(95, 99, 104);
-        doc.text(`🕐 ${activity.openingHours}`, leftMargin + 5, y);
-        y += 6;
-    }
-
-    // Description
-    if (activity.description) {
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        const wrappedDesc = doc.splitTextToSize(activity.description, rightMargin - leftMargin - 10);
-        doc.text(`📝 ${wrappedDesc[0]}`, leftMargin + 5, y);
-        if (wrappedDesc.length > 1) {
-            y += 5;
-            for (let i = 1; i < Math.min(wrappedDesc.length, 3); i++) {
-                doc.text(`   ${wrappedDesc[i]}`, leftMargin + 5, y);
-                y += 5;
-            }
-        }
-        y += 3;
-    }
-
-    // Tags
-    if (activity.tags && activity.tags.length > 0) {
-        doc.setFontSize(9);
-        doc.setTextColor(95, 99, 104);
-        const tagsText = `🏷️ ${activity.tags.slice(0, 5).join(', ')}`;
-        doc.text(tagsText, leftMargin + 5, y);
-        y += 6;
-    }
-
-    // Notes
-    if (activity.notes) {
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
-        const wrappedNotes = doc.splitTextToSize(activity.notes, rightMargin - leftMargin - 10);
-        doc.text(`💡 ${wrappedNotes[0]}`, leftMargin + 5, y);
-        if (wrappedNotes.length > 1) {
-            y += 4;
-            doc.text(`   ${wrappedNotes[1]}`, leftMargin + 5, y);
-        }
-        y += 6;
-    }
-
-    // Separator line
-    doc.setDrawColor(230, 230, 230);
-    doc.setLineWidth(0.2);
-    doc.line(leftMargin, y + 2, rightMargin, y + 2);
-
-    return y + 5;
-}
-
-    
-    addBankPage(doc, bankActivities) {
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 25;
-
-    // Page header
-    doc.setFontSize(22);
-    doc.setTextColor(25, 118, 210);
-    doc.text('💡 Additional Activities to Consider', 20, y);
-    y += 15;
-
-    // Subtitle
-    doc.setFontSize(12);
-    doc.setTextColor(95, 99, 104);
-    doc.text('Pick from these activities and add them to your schedule!', 20, y);
-    y += 10;
-
-    // Underline
-    doc.setDrawColor(25, 118, 210);
-    doc.setLineWidth(0.5);
-    doc.line(20, y, pageWidth - 20, y);
-    y += 20;
-
-    // Bank activities
-    bankActivities.forEach((activity, index) => {
-        y = this.addBankActivityToPage(doc, activity, y, pageWidth, index + 1);
-        y += 8;
+        doc.setFontSize(14);
+        doc.setTextColor(32, 33, 36);
         
-        // Check if we need a new page
-        if (y > 250) {
-            doc.addPage();
-            y = 25;
-        }
-    });
-}
+        // Summary box background
+        const boxY = y;
+        const boxHeight = 50;
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(30, boxY, pageWidth - 60, boxHeight, 5, 5, 'F');
+        
+        y += 20;
+        doc.text(`📅 ${tripDays} days planned`, pageWidth / 2, y, { align: 'center' });
+        y += 10;
+        doc.text(`🎯 ${totalActivities} activities scheduled`, pageWidth / 2, y, { align: 'center' });
+        y += 10;
+        doc.text(`📍 Ready for adventure!`, pageWidth / 2, y, { align: 'center' });
 
-addBankActivityToPage(doc, activity, startY, pageWidth, number) {
-    let y = startY;
-    const leftMargin = 20;
-
-    // Activity number and title
-    doc.setFontSize(14);
-    doc.setTextColor(32, 33, 36);
-    doc.text(`${number}. ${activity.title}`, leftMargin, y);
-    y += 8;
-
-    // Description
-    if (activity.description) {
+        // Footer message
+        y = 250;
         doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        const wrappedDesc = doc.splitTextToSize(activity.description, pageWidth - leftMargin - 20);
-        doc.text(wrappedDesc[0], leftMargin + 5, y);
-        if (wrappedDesc.length > 1) {
-            y += 5;
-            doc.text(wrappedDesc[1], leftMargin + 5, y);
-        }
-        y += 6;
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Generated by Trip Planner`, pageWidth / 2, y, { align: 'center' });
     }
 
-    // Location/URL
-    if (activity.locationUrl) {
-        doc.setFontSize(9);
+    addDayPage(doc, date, activities) {
+        const pageWidth = doc.internal.pageSize.getWidth();
+        let y = 25;
+
+        // Date header
+        doc.setFontSize(22);
         doc.setTextColor(25, 118, 210);
-        const truncatedUrl = activity.locationUrl.length > 70 ? 
-            activity.locationUrl.substring(0, 70) + '...' : activity.locationUrl;
-        doc.text(`🌐 ${truncatedUrl}`, leftMargin + 5, y);
-        y += 5;
+        const formattedDate = this.formatDateForDisplay(date);
+        const dayName = this.getDayName(date);
+        doc.text(`${dayName}, ${formattedDate}`, 20, y);
+        y += 15;
+
+        // Underline
+        doc.setDrawColor(25, 118, 210);
+        doc.setLineWidth(0.5);
+        doc.line(20, y, pageWidth - 20, y);
+        y += 20;
+
+        // Activities
+        if (activities.length === 0) {
+            doc.setFontSize(14);
+            doc.setTextColor(150, 150, 150);
+            doc.text('No activities planned for this day', 20, y);
+            return;
+        }
+
+        activities.forEach(activity => {
+            y = this.addActivityToPage(doc, activity, y, pageWidth);
+            y += 10; // Space between activities
+            
+            // Check if we need a new page
+            if (y > 250) {
+                doc.addPage();
+                y = 25;
+            }
+        });
     }
 
-    // Opening hours
-    if (activity.openingHours) {
-        doc.setFontSize(9);
+    addActivityToPage(doc, activity, startY, pageWidth) {
+        let y = startY;
+        const leftMargin = 20;
+        const rightMargin = pageWidth - 20;
+
+        // Time block (if available)
+        if (activity.start && activity.end) {
+            doc.setFontSize(12);
+            doc.setTextColor(95, 99, 104);
+            const startTime = new Date(activity.start).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            });
+            const endTime = new Date(activity.end).toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit', hour12: true 
+            });
+            doc.text(`⏰ ${startTime} - ${endTime}`, leftMargin, y);
+            y += 8;
+        }
+
+        // Activity title
+        doc.setFontSize(16);
+        doc.setTextColor(32, 33, 36);
+        doc.text(`📍 ${activity.title}`, leftMargin, y);
+        y += 8;
+
+        // Location/URL
+        if (activity.locationUrl) {
+            doc.setFontSize(10);
+            doc.setTextColor(25, 118, 210);
+            const truncatedUrl = activity.locationUrl.length > 60 ? 
+                activity.locationUrl.substring(0, 60) + '...' : activity.locationUrl;
+            doc.text(`🌐 ${truncatedUrl}`, leftMargin + 5, y);
+            y += 6;
+        }
+
+        // Opening hours
+        if (activity.openingHours) {
+            doc.setFontSize(10);
+            doc.setTextColor(95, 99, 104);
+            doc.text(`🕐 ${activity.openingHours}`, leftMargin + 5, y);
+            y += 6;
+        }
+
+        // Description
+        if (activity.description) {
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            const wrappedDesc = doc.splitTextToSize(activity.description, rightMargin - leftMargin - 10);
+            doc.text(`📝 ${wrappedDesc[0]}`, leftMargin + 5, y);
+            if (wrappedDesc.length > 1) {
+                y += 5;
+                for (let i = 1; i < Math.min(wrappedDesc.length, 3); i++) {
+                    doc.text(`   ${wrappedDesc[i]}`, leftMargin + 5, y);
+                    y += 5;
+                }
+            }
+            y += 3;
+        }
+
+        // Tags
+        if (activity.tags && activity.tags.length > 0) {
+            doc.setFontSize(9);
+            doc.setTextColor(95, 99, 104);
+            const tagsText = `🏷️ ${activity.tags.slice(0, 5).join(', ')}`;
+            doc.text(tagsText, leftMargin + 5, y);
+            y += 6;
+        }
+
+        // Notes
+        if (activity.notes) {
+            doc.setFontSize(9);
+            doc.setTextColor(80, 80, 80);
+            const wrappedNotes = doc.splitTextToSize(activity.notes, rightMargin - leftMargin - 10);
+            doc.text(`💡 ${wrappedNotes[0]}`, leftMargin + 5, y);
+            if (wrappedNotes.length > 1) {
+                y += 4;
+                doc.text(`   ${wrappedNotes[1]}`, leftMargin + 5, y);
+            }
+            y += 6;
+        }
+
+        // Separator line
+        doc.setDrawColor(230, 230, 230);
+        doc.setLineWidth(0.2);
+        doc.line(leftMargin, y + 2, rightMargin, y + 2);
+
+        return y + 5;
+    }
+
+    addBankPage(doc, bankActivities) {
+        const pageWidth = doc.internal.pageSize.getWidth();
+        let y = 25;
+
+        // Page header
+        doc.setFontSize(22);
+        doc.setTextColor(25, 118, 210);
+        doc.text('💡 Additional Activities to Consider', 20, y);
+        y += 15;
+
+        // Subtitle
+        doc.setFontSize(12);
         doc.setTextColor(95, 99, 104);
-        doc.text(`🕐 ${activity.openingHours}`, leftMargin + 5, y);
-        y += 5;
+        doc.text('Pick from these activities and add them to your schedule!', 20, y);
+        y += 10;
+
+        // Underline
+        doc.setDrawColor(25, 118, 210);
+        doc.setLineWidth(0.5);
+        doc.line(20, y, pageWidth - 20, y);
+        y += 20;
+
+        // Bank activities
+        bankActivities.forEach((activity, index) => {
+            y = this.addBankActivityToPage(doc, activity, y, pageWidth, index + 1);
+            y += 8;
+            
+            // Check if we need a new page
+            if (y > 250) {
+                doc.addPage();
+                y = 25;
+            }
+        });
     }
 
-    // Tags
-    if (activity.tags && activity.tags.length > 0) {
-        doc.setFontSize(9);
-        doc.setTextColor(95, 99, 104);
-        const tagsText = `🏷️ ${activity.tags.join(', ')}`;
-        doc.text(tagsText, leftMargin + 5, y);
-        y += 5;
+    addBankActivityToPage(doc, activity, startY, pageWidth, number) {
+        let y = startY;
+        const leftMargin = 20;
+
+        // Activity number and title
+        doc.setFontSize(14);
+        doc.setTextColor(32, 33, 36);
+        doc.text(`${number}. ${activity.title}`, leftMargin, y);
+        y += 8;
+
+        // Description
+        if (activity.description) {
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            const wrappedDesc = doc.splitTextToSize(activity.description, pageWidth - leftMargin - 20);
+            doc.text(wrappedDesc[0], leftMargin + 5, y);
+            if (wrappedDesc.length > 1) {
+                y += 5;
+                doc.text(wrappedDesc[1], leftMargin + 5, y);
+            }
+            y += 6;
+        }
+
+        // Location/URL
+        if (activity.locationUrl) {
+            doc.setFontSize(9);
+            doc.setTextColor(25, 118, 210);
+            const truncatedUrl = activity.locationUrl.length > 70 ? 
+                activity.locationUrl.substring(0, 70) + '...' : activity.locationUrl;
+            doc.text(`🌐 ${truncatedUrl}`, leftMargin + 5, y);
+            y += 5;
+        }
+
+        // Opening hours
+        if (activity.openingHours) {
+            doc.setFontSize(9);
+            doc.setTextColor(95, 99, 104);
+            doc.text(`🕐 ${activity.openingHours}`, leftMargin + 5, y);
+            y += 5;
+        }
+
+        // Tags
+        if (activity.tags && activity.tags.length > 0) {
+            doc.setFontSize(9);
+            doc.setTextColor(95, 99, 104);
+            const tagsText = `🏷️ ${activity.tags.join(', ')}`;
+            doc.text(tagsText, leftMargin + 5, y);
+            y += 5;
+        }
+
+        // Notes
+        if (activity.notes) {
+            doc.setFontSize(9);
+            doc.setTextColor(80, 80, 80);
+            const wrappedNotes = doc.splitTextToSize(activity.notes, pageWidth - leftMargin - 20);
+            doc.text(`💡 ${wrappedNotes[0]}`, leftMargin + 5, y);
+            y += 5;
+        }
+
+        return y;
     }
 
-    // Notes
-    if (activity.notes) {
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
-        const wrappedNotes = doc.splitTextToSize(activity.notes, pageWidth - leftMargin - 20);
-        doc.text(`💡 ${wrappedNotes[0]}`, leftMargin + 5, y);
-        y += 5;
+    getTripDays() {
+        if (!this.currentTrip || !this.currentTrip.dateRange) return 0;
+        
+        const startDate = new Date(this.currentTrip.dateRange.start);
+        const endDate = new Date(this.currentTrip.dateRange.end);
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+        
+        return daysDiff;
     }
 
-    return y;
-}
+    formatDateForDisplay(dateString) {
+        const date = new Date(dateString + 'T00:00:00');
+        return date.toLocaleDateString('en-US', { 
+            month: 'long', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+    }
 
-getTripDays() {
-    if (!this.currentTrip || !this.currentTrip.dateRange) return 0;
-    
-    const startDate = new Date(this.currentTrip.dateRange.start);
-    const endDate = new Date(this.currentTrip.dateRange.end);
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-    
-    return daysDiff;
-}
-
-formatDateForDisplay(dateString) {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-    });
-}
-
-getDayName(dateString) {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { weekday: 'long' });
-}
+    getDayName(dateString) {
+        const date = new Date(dateString + 'T00:00:00');
+        return date.toLocaleDateString('en-US', { weekday: 'long' });
+    }
     
     // Sharing
     async shareTrip() {
