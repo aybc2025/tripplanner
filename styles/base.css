@@ -2106,4 +2106,81 @@ html, body {
         padding: var(--spacing-md);
         min-height: var(--touch-target-min);
     }
+/* Mobile PDF button adjustments */
+   @media (max-width: 768px) {
+       #export-pdf-btn {
+           font-size: var(--font-size-base);
+           padding: var(--spacing-md);
+           min-height: var(--touch-target-min);
+       }
+   }
+
+/* Mobile Trip Selector in Activity Bank */
+.mobile-trip-btn {
+    display: none;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    max-width: 120px;
+    flex-shrink: 0;
 }
+
+.mobile-trip-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+}
+
+.mobile-trip-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-trip-chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+/* Show mobile trip selector only on mobile */
+@media (max-width: 768px) {
+    .mobile-trip-btn {
+        display: flex;
+    }
+    
+    /* Adjust bank header layout for mobile */
+    .bank-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-xs);
+    }
+    
+    .bank-header h3 {
+        flex: 1;
+        min-width: 0;
+        font-size: var(--font-size-base);
+    }
+    
+    /* Make sure add button stays visible */
+    .add-btn {
+        flex-shrink: 0;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .mobile-trip-btn {
+        display: none;
+    }
+}
+} 
