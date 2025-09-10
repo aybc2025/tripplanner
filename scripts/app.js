@@ -80,6 +80,7 @@ class TripPlannerApp {
     cacheElements() {
         const elementIds = [
             'app', 'loading-screen', 'trip-selector-btn', 'current-trip-name',
+            'mobile-trip-selector', 'mobile-trip-name', // הוסף את השורה הזו
             'day-view', 'week-view', 'month-view', 'today-btn', 'prev-btn', 'next-btn',
             'menu-btn', 'activity-bank', 'bank-activities', 'bank-empty', 'add-activity-btn',
             'calendar-title', 'day-view-container', 'week-view-container', 'month-view-container',
@@ -134,6 +135,18 @@ class TripPlannerApp {
         if (this.elements['trip-selector-btn']) {
             this.elements['trip-selector-btn'].addEventListener('click', () => this.showTripModal());
         }
+        
+        // Mobile trip selector - הוסף את זה
+        if (this.elements['mobile-trip-selector']) {
+            this.elements['mobile-trip-selector'].addEventListener('click', () => {
+                this.showTripModal();
+                // Auto-close activity bank after selection if needed
+                if (this.isMobile && this.activityBankOpen) {
+                    setTimeout(() => this.closeActivityBank(), 100);
+                }
+            });
+        }
+        
         if (this.elements['close-trip-modal']) {
             this.elements['close-trip-modal'].addEventListener('click', () => this.hideTripModal());
         }
@@ -504,8 +517,16 @@ class TripPlannerApp {
     
     // Trip Management
     updateCurrentTripDisplay() {
-        if (this.elements['current-trip-name'] && this.currentTrip) {
-            this.elements['current-trip-name'].textContent = this.currentTrip.name;
+        if (this.currentTrip) {
+            // Update desktop trip name
+            if (this.elements['current-trip-name']) {
+                this.elements['current-trip-name'].textContent = this.currentTrip.name;
+            }
+            
+            // Update mobile trip name
+            if (this.elements['mobile-trip-name']) {
+                this.elements['mobile-trip-name'].textContent = this.currentTrip.name;
+            }
         }
     }
     
