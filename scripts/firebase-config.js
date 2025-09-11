@@ -23,7 +23,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Import Firebase configuration from auto-generated file
-import { firebaseConfig } from './generate-config.js';
+import { firebaseConfig } from './config.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
