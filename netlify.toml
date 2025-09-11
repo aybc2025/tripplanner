@@ -1,7 +1,7 @@
 # netlify.toml - Netlify Configuration for Trip Planner PWA
 
 [build]
-  # No build process needed - static files only
+  command = "node generate-config.js"
   publish = "."
   
 [build.environment]
