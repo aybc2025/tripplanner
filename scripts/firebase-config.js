@@ -24,12 +24,12 @@ import {
 
 // Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBANuykGBqLvhi7t9g19nt5_HP1Wmt8odQ",
-    authDomain: "trip-planner-dbd45.firebaseapp.com",
-    projectId: "trip-planner-dbd45",
-    storageBucket: "trip-planner-dbd45.firebasestorage.app",
-    messagingSenderId: "900014674494",
-    appId: "1:900014674494:web:92016992ba5d77ba4db76f"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
