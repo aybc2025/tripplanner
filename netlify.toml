@@ -1,7 +1,7 @@
 # netlify.toml - Netlify Configuration for Trip Planner PWA
 
 [build]
-  command = "node generate-config.js"
+     command = "node scripts/generate-config.js"  # הוסף scripts/
   publish = "."
   
 [build.environment]
