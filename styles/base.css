@@ -2184,3 +2184,8 @@ html, body {
     }
 }
 } 
+
+.activity-time {
+    direction: ltr; /* Force LTR for time display */
+    unicode-bidi: embed;
+}
