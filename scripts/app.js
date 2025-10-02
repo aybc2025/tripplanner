@@ -1698,128 +1698,157 @@ class TripPlannerApp {
     }
 
     generateActivityHTML(activity) {
-        const isHebrewTitle = this.isHebrewText(activity.title);
-        const isHebrewDesc = this.isHebrewText(activity.description);
-        const isHebrewNotes = this.isHebrewText(activity.notes);
-        
-        const timeString = activity.start && activity.end ? 
-            `${new Date(activity.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} - 
-             ${new Date(activity.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : '';
-
-        return `
-            <div class="activity-item">
-                <div class="activity-header">
-                    <h3 class="activity-title ${isHebrewTitle ? 'hebrew' : 'english'}">
-                        ${this.escapeHtml(activity.title)}
-                    </h3>
-                    ${timeString ? `<div class="activity-time">⏰ ${timeString}</div>` : ''}
-                </div>
-                
-                ${activity.description ? 
-                    `<div class="activity-description ${isHebrewDesc ? 'hebrew' : 'english'}">
-                        ${this.escapeHtml(activity.description)}
-                    </div>` : ''
-                }
-                
-                <div class="activity-details">
-                    ${activity.locationUrl ? 
-                        `<div class="detail-item">
-                            <span class="detail-icon">🌐</span>
-                            <span>${this.escapeHtml(activity.locationUrl)}</span>
-                        </div>` : ''
-                    }
-                    ${activity.openingHours ? 
-                        `<div class="detail-item">
-                            <span class="detail-icon">🕐</span>
-                            <span>${this.escapeHtml(activity.openingHours)}</span>
-                        </div>` : ''
-                    }
-                </div>
-                
-                ${activity.tags && activity.tags.length > 0 ? 
-                    `<div class="activity-tags">
-                        ${activity.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
-                    </div>` : ''
-                }
-                
-                ${activity.notes ? 
-                    `<div class="activity-notes ${isHebrewNotes ? 'hebrew' : 'english'}">
-                        <strong>הערות:</strong> ${this.escapeHtml(activity.notes)}
-                    </div>` : ''
-                }
-            </div>`;
+    const isHebrewTitle = this.isHebrewText(activity.title);
+    const isHebrewDesc = this.isHebrewText(activity.description);
+    const isHebrewNotes = this.isHebrewText(activity.notes);
+    
+    // Fix RTL display - wrap times in LTR span to show in correct order
+    let timeString = '';
+    if (activity.start && activity.end) {
+        const startTime = new Date(activity.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        const endTime = new Date(activity.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        timeString = `<span dir="ltr">${startTime} - ${endTime}</span>`;
     }
 
+    return `
+        <div class="activity-item">
+            <div class="activity-header">
+                <h3 class="activity-title ${isHebrewTitle ? 'hebrew' : 'english'}">
+                    ${this.escapeHtml(activity.title)}
+                </h3>
+                ${timeString ? `<div class="activity-time">⏰ ${timeString}</div>` : ''}
+            </div>
+            
+            ${activity.description ? 
+                `<div class="activity-description ${isHebrewDesc ? 'hebrew' : 'english'}">
+                    ${this.escapeHtml(activity.description)}
+                </div>` : ''
+            }
+            
+            <div class="activity-details">
+                ${activity.locationUrl ? 
+                    `<div class="detail-item">
+                        <span class="detail-icon">🌐</span>
+                        <span>${this.escapeHtml(activity.locationUrl)}</span>
+                    </div>` : ''
+                }
+                ${activity.openingHours ? 
+                    `<div class="detail-item">
+                        <span class="detail-icon">🕐</span>
+                        <span>${this.escapeHtml(activity.openingHours)}</span>
+                    </div>` : ''
+                }
+            </div>
+            
+            ${activity.tags && activity.tags.length > 0 ? 
+                `<div class="activity-tags">
+                    ${activity.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                </div>` : ''
+            }
+            
+            ${activity.notes ? 
+                `<div class="activity-notes ${isHebrewNotes ? 'hebrew' : 'english'}">
+                    <strong>הערות:</strong> ${this.escapeHtml(activity.notes)}
+                </div>` : ''
+            }
+        </div>`;
+}
+
     generateBankHTML(bankActivities) {
-        return `
-            <div class="bank-page">
-                <div class="bank-header">
-                    <div class="day-title">💡 פעילויות נוספות לשיקול</div>
-                    <div class="day-date">בחרו מהפעילויות הבאות והוסיפו לתוכנית</div>
-                </div>
-                
-                <div class="activities-list">
-                    ${bankActivities.map((activity, index) => `
-                        <div class="bank-item">
-                            <div class="activity-header">
-                                <h3 class="activity-title ${this.isHebrewText(activity.title) ? 'hebrew' : 'english'}">
-                                    ${index + 1}. ${this.escapeHtml(activity.title)}
-                                </h3>
+    return `
+        <div class="bank-page">
+            <div class="bank-header">
+                <div class="day-title">💡 פעילויות נוספות לשיקול</div>
+                <div class="day-date">בחרו מהפעילויות הבאות והוסיפו לתוכנית</div>
+            </div>
+            
+            <div class="activities-list">
+                ${bankActivities.map((activity, index) => {
+                    // Fix RTL time display for bank activities too
+                    let timeInfo = '';
+                    if (activity.start && activity.end) {
+                        const startTime = new Date(activity.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                        const endTime = new Date(activity.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                        timeInfo = `
+                            <div class="detail-item">
+                                <span class="detail-icon">⏰</span>
+                                <span dir="ltr">${startTime} - ${endTime}</span>
                             </div>
-                            
-                            ${activity.description ? 
-                                `<div class="activity-description ${this.isHebrewText(activity.description) ? 'hebrew' : 'english'}">
-                                    ${this.escapeHtml(activity.description)}
+                        `;
+                    }
+                    
+                    return `
+                    <div class="bank-item">
+                        <div class="activity-header">
+                            <h3 class="activity-title ${this.isHebrewText(activity.title) ? 'hebrew' : 'english'}">
+                                ${index + 1}. ${this.escapeHtml(activity.title)}
+                            </h3>
+                        </div>
+                        
+                        ${activity.description ? 
+                            `<div class="activity-description ${this.isHebrewText(activity.description) ? 'hebrew' : 'english'}">
+                                ${this.escapeHtml(activity.description)}
+                            </div>` : ''
+                        }
+                        
+                        <div class="activity-details">
+                            ${timeInfo}
+                            ${activity.locationUrl ? 
+                                `<div class="detail-item">
+                                    <span class="detail-icon">🌐</span>
+                                    <span>${this.escapeHtml(activity.locationUrl)}</span>
                                 </div>` : ''
                             }
-                            
-                            <div class="activity-details">
-                                ${activity.locationUrl ? 
-                                    `<div class="detail-item">
-                                        <span class="detail-icon">🌐</span>
-                                        <span>${this.escapeHtml(activity.locationUrl)}</span>
-                                    </div>` : ''
-                                }
-                                ${activity.openingHours ? 
-                                    `<div class="detail-item">
-                                        <span class="detail-icon">🕐</span>
-                                        <span>${this.escapeHtml(activity.openingHours)}</span>
-                                    </div>` : ''
-                                }
-                            </div>
-                            
-                            ${activity.tags && activity.tags.length > 0 ? 
-                                `<div class="activity-tags">
-                                    ${activity.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                            ${activity.openingHours ? 
+                                `<div class="detail-item">
+                                    <span class="detail-icon">🕐</span>
+                                    <span>${this.escapeHtml(activity.openingHours)}</span>
                                 </div>` : ''
                             }
                         </div>
-                    `).join('')}
-                </div>
-            </div>`;
-    }
+                        
+                        ${activity.tags && activity.tags.length > 0 ? 
+                            `<div class="activity-tags">
+                                ${activity.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('')}
+                            </div>` : ''
+                        }
+                    </div>
+                `}).join('')}
+            </div>
+        </div>`;
+}
 
     // PDF Helper Functions
     groupActivitiesByDate(activities) {
-        const grouped = {};
+    const grouped = {};
+    
+    activities.forEach(activity => {
+        if (!activity.start) return;
         
-        activities.forEach(activity => {
-            if (!activity.start) return;
-            
-            const date = activity.start.split('T')[0]; // Get YYYY-MM-DD
-            if (!grouped[date]) {
-                grouped[date] = [];
-            }
-            grouped[date].push(activity);
-        });
+        const date = activity.start.split('T')[0]; // Get YYYY-MM-DD
+        if (!grouped[date]) {
+            grouped[date] = [];
+        }
+        grouped[date].push(activity);
+    });
 
-        // Sort activities within each day by start time
-        Object.keys(grouped).forEach(date => {
-            grouped[date].sort((a, b) => new Date(a.start) - new Date(b.start));
+    // Sort activities within each day by start time (earliest first)
+    Object.keys(grouped).forEach(date => {
+        grouped[date].sort((a, b) => {
+            const aTime = new Date(a.start).getTime();
+            const bTime = new Date(b.start).getTime();
+            return aTime - bTime; // Ascending order: earliest time first
         });
+        
+        // Debug log to verify sorting
+        console.log(`Activities for ${date}:`, grouped[date].map(a => ({
+            title: a.title,
+            start: new Date(a.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        })));
+    });
 
-        return grouped;
-    }
+    return grouped;
+}
 
     formatDateForFile(date) {
         return date.toISOString().split('T')[0];
