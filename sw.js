@@ -80,31 +80,75 @@ self.addEventListener('activate', (event) => {
 // Fetch event - handle network requests
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const url = new URL(request.url);
     
-    // Skip non-GET requests
-    if (request.method !== 'GET') {
+    try {
+        const url = new URL(request.url);
+        
+        // Skip non-GET requests
+        if (request.method !== 'GET') {
+            return;
+        }
+        
+        // Skip external requests (different origin)
+        // Use self.location.origin for ServiceWorker context
+        if (url.origin !== self.location.origin) {
+            return;
+        }
+        
+        // Choose caching strategy based on request
+        event.respondWith(
+            (async () => {
+                try {
+                    if (NETWORK_FIRST_PATTERNS.some(pattern => pattern.test(url.pathname))) {
+                        // Network first (for API calls, shared links)
+                        return await networkFirstStrategy(request);
+                    } else if (STATIC_ASSETS.includes(url.pathname) || url.pathname === '/') {
+                        // Cache first (for static assets)
+                        return await cacheFirstStrategy(request);
+                    } else if (DYNAMIC_ASSETS_PATTERNS.some(pattern => pattern.test(url.pathname))) {
+                        // Stale while revalidate (for images, fonts)
+                        return await staleWhileRevalidateStrategy(request);
+                    } else {
+                        // Default: network with cache fallback
+                        return await networkWithCacheFallbackStrategy(request);
+                    }
+                } catch (error) {
+                    console.error('[SW] Fetch strategy error:', error, request.url);
+                    // Try to fetch from network directly as fallback
+                    try {
+                        const directResponse = await fetch(request);
+                        // Return the response even if it's a 404 or other error
+                        return directResponse;
+                    } catch (fetchError) {
+                        console.error('[SW] Direct fetch also failed:', fetchError, request.url);
+                        // Try cache as last resort
+                        const cachedResponse = await caches.match(request);
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // For navigation requests, return cached index page
+                        if (request.mode === 'navigate') {
+                            const cachedIndex = await caches.match('./');
+                            if (cachedIndex) {
+                                return cachedIndex;
+                            }
+                        }
+                        // Last resort: return a minimal error response
+                        // This ensures the promise always resolves
+                        return new Response('Service Worker fetch failed', {
+                            status: 503,
+                            statusText: 'Service Unavailable',
+                            headers: { 'Content-Type': 'text/plain' }
+                        });
+                    }
+                }
+            })()
+        );
+    } catch (error) {
+        console.error('[SW] Fetch event handler error:', error, request.url);
+        // Don't call event.respondWith() if there's an error in setup
+        // Let the browser handle the request normally
         return;
-    }
-    
-    // Skip external requests (different origin)
-    if (url.origin !== location.origin) {
-        return;
-    }
-    
-    // Choose caching strategy based on request
-    if (NETWORK_FIRST_PATTERNS.some(pattern => pattern.test(url.pathname))) {
-        // Network first (for API calls, shared links)
-        event.respondWith(networkFirstStrategy(request));
-    } else if (STATIC_ASSETS.includes(url.pathname) || url.pathname === '/') {
-        // Cache first (for static assets)
-        event.respondWith(cacheFirstStrategy(request));
-    } else if (DYNAMIC_ASSETS_PATTERNS.some(pattern => pattern.test(url.pathname))) {
-        // Stale while revalidate (for images, fonts)
-        event.respondWith(staleWhileRevalidateStrategy(request));
-    } else {
-        // Default: network with cache fallback
-        event.respondWith(networkWithCacheFallbackStrategy(request));
     }
 });
 
